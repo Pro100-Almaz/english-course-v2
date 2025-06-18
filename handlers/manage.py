@@ -264,5 +264,5 @@ def handlers_register_manage(dp: Dispatcher):
     # Удаление данных
     dp.register_callback_query_handler(inform_delete_callback, lambda x: x.data and x.data.startswith('del '))
     dp.register_message_handler(delete_info, Text(equals='Удалить Курс', ignore_case=True))
-    dp.callback_query_handler(inform_delete_callback_teachers, lambda x: x.data and x.data.startswith('del '))
+    dp.register_callback_query_handler(inform_delete_callback_teachers, lambda x: x.data and x.data.startswith('del '))
     dp.register_message_handler(delete_teacher_info, Text(equals='Удалить Учителя', ignore_case=True))
