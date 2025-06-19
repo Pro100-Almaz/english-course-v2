@@ -10,28 +10,27 @@ from keyboards import kb_manage
 
 """Администрирование Бота через FSM
 Внесение изменений в базу через интерфейс Telegram
-Владелец школы сможет сам управлять содержимым курсов/тренировок
-и стоимостью в мобильном телефоне.
+Владелец школы сможет сам управлять содержимым каналов и материалов
+в мобильном телефоне.
 """
 
 ID_MASTER = int(master_id)
 
 
-class FSMcourses(StatesGroup):
+class FSMchannel(StatesGroup):
+    channel_id = State()
     title = State()
-    photo = State()
     description = State()
-    timetable = State()
-    duration_of_lesson = State()
-    price_of_lesson = State()
+    topic = State()
 
 
-class FSMteacher(StatesGroup):
-    name = State()
-    photo = State()
-    description = State()
-    courses = State()
-
+class FSMmaterial(StatesGroup):
+    channel_selection = State()
+    title = State()
+    content_type = State()
+    content = State()
+    file = State()
+    discussion_link = State()
 
 
 """Бот проверяет является ли пользователь хозяином бота.
@@ -52,18 +51,6 @@ async def verify_owner(message: types.Message):
     await message.delete()
 
 
-
-"""Запуск FSM для внесения изменений в курсы/тренировки
-"""
-
-# Начало загрузки данных о курсе
-# @dp.message_handler(Text(equals='Загрузить Курс', ignore_case=True), state=None)
-async def add_course(message: types.Message):
-    if message.from_user.id == ID_MASTER:
-        await FSMcourses.title.set()
-        await message.reply('Загрузи название курса')
-
-
 """Функция отмены, выход из state, если администратор передумал вносить правки в бота
 """
 #@dp.message_handler(Text(equals='Отмена Загрузки'), state="*")
@@ -77,158 +64,220 @@ async def cancel_state(message: types.Message, state=FSMContext):
         await message.reply('Изменения не внесены')
 
 
-# Бот ловит ответ и пишет в словарь название курса
-# @dp.message_handler(state=FSMcourses.title)
-async def load_title(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['title'] = message.text
-        await FSMcourses.next()
-        await message.reply('Загрузи фото')
-
-
-# Бот ловит ответ и сохраняет в словарь фото курса
-# @dp.message_handler(content_types=['photo'], state=FSMcourses.photo)
-async def load_photo(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['photo'] = message.photo[0].file_id
-        await FSMcourses.next()
-        await message.reply('Загрузи описание курса')
-
-
-# Бот ловит ответ и сохраняет в словарь описание курса
-# @dp.message_handler(state=FSMcourses.description)
-async def load_description(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['description'] = message.text
-        await FSMcourses.next()
-        await message.reply('Загрузи расписание')
-
-
-# Бот ловит сообщение и сохраняет в словарь расписание занятий курса
-# @dp.message_handler(state=FSMcourses.timetable)
-async def load_timetable(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['timetable'] = message.text
-        await FSMcourses.next()
-        await message.reply('Загрузи продолжительность урока')
-
-
-# Бот ловит сообщение и сохраняет в словарь время продолжительности одного урока
-# @dp.message_handler(state=FSMcourses.duration_of_lesson)
-async def load_duration(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['duration_of_lesson'] = message.text
-        await FSMcourses.next()
-        await message.reply('Загрузи стоимость одного урока')
-
-
-# Бот ловит сообщение и сохраняет в словарь стоимость урока
-# @dp.message_handler(state=FSMcourses.price_of_lesson)
-async def load_price(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_course:
-            data_course['price_of_lesson'] = float(message.text)
-
-        await sqlite_db.sql_add_commands_courses(state)
-        await state.finish()
-        await message.reply('Загрузка информации об курсе/тренировке окончена')
-
-
-"""Запуск FSM для внесения информации об учителях
+"""Запуск FSM для внесения информации о каналах
 """
-# Начало загрузки данных от учителе
-#@dp.message_handler(Text(equals='Загрузить Учителя', ignore_case=True), state=None)
-
-async def add_teacher(message: types.Message):
+# Начало загрузки данных о канале
+async def add_channel(message: types.Message):
     if message.from_user.id == ID_MASTER:
-        await FSMteacher.name.set()
-        await message.reply('Загрузи ФИО учителя')
+        await FSMchannel.channel_id.set()
+        await message.reply('Загрузи ID канала (например: @channel_name или -1001234567890)')
 
 
-# Бот ловит ответ и пишет в словарь имя учителя
-# @dp.message_handler(state=FSMteacher.name)
-async def load_name(message: types.Message, state=FSMContext):
+# Бот ловит ответ и пишет в словарь ID канала
+async def load_channel_id(message: types.Message, state=FSMContext):
     if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_teacher:
-            data_teacher['name'] = message.text
-        await FSMteacher.next()
-        await message.reply('Загрузи фото')
+        async with state.proxy() as data_channel:
+            data_channel['channel_id'] = message.text
+        await FSMchannel.next()
+        await message.reply('Загрузи название канала')
 
 
-# Бот ловит ответ и сохраняет в словарь фото учителя
-# @dp.message_handler(content_types=['photo'], state=FSMteacher.photo)
-
-async def load_teacher_photo(message: types.Message, state=FSMContext):
+# Бот ловит ответ и пишет в словарь название канала
+async def load_channel_title(message: types.Message, state=FSMContext):
     if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_teacher:
-            data_teacher['photo'] = message.photo[0].file_id
-        await FSMteacher.next()
-        await message.reply('Загрузи информацию об учителе')
+        async with state.proxy() as data_channel:
+            data_channel['title'] = message.text
+        await FSMchannel.next()
+        await message.reply('Загрузи описание канала')
 
 
-# Бот ловит ответ и сохраняет в словарь описание навыков учителя
-# @dp.message_handler(state=FSMteacher.description)
-
-async def load_teacher_description(message: types.Message, state=FSMContext):
+# Бот ловит ответ и пишет в словарь описание канала
+async def load_channel_description(message: types.Message, state=FSMContext):
     if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_teacher:
-            data_teacher['description'] = message.text
-        await FSMteacher.next()
-        await message.reply('Загрузи курсы/тренировки для учителя')
-
-# Бот ловит ответ и сохраняет в словарь информацию о курсах, которые ведет учитель
-# @dp.message_handler(state=FSMteacher.courses)
+        async with state.proxy() as data_channel:
+            data_channel['description'] = message.text
+        await FSMchannel.next()
+        await message.reply('Загрузи тему канала')
 
 
-async def load_teacher_courses(message: types.Message, state=FSMContext):
+# Бот ловит ответ и пишет в словарь тему канала
+async def load_channel_topic(message: types.Message, state=FSMContext):
     if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_teacher:
-            data_teacher['courses'] = message.text
+        async with state.proxy() as data_channel:
+            data_channel['topic'] = message.text
 
-        await sqlite_db.sql_add_commands_teachers(state)
+        await sqlite_db.sql_add_commands_channels(state)
         await state.finish()
-        await message.reply('Загрузка информации об учителе окончена')
+        await message.reply('Загрузка информации о канале окончена')
 
 
-"""Инлайн кнопки для удаления из базы сведений о тренировках/курсах и учителях
+"""Запуск FSM для внесения материалов
+"""
+# Начало загрузки данных о материале
+async def add_material(message: types.Message):
+    print(f"add_material called by user {message.from_user.id}")  # Debug print
+    if message.from_user.id == ID_MASTER:
+        try:
+            # Получаем список каналов для выбора
+            channels = await sqlite_db.get_channels_for_materials()
+            if not channels:
+                await message.reply('Сначала добавьте канал!')
+                return
+            
+            # Создаем инлайн клавиатуру с каналами
+            keyboard = InlineKeyboardMarkup()
+            for channel_id, title in channels:
+                keyboard.add(InlineKeyboardButton(title, callback_data=f'select_channel_{channel_id}'))
+            
+            # Add a test button
+            keyboard.add(InlineKeyboardButton("Test Button", callback_data='test_button'))
+            
+            await FSMmaterial.channel_selection.set()
+            await message.reply(f'Выберите канал для добавления материала (найдено каналов: {len(channels)}):', reply_markup=keyboard)
+        except Exception as e:
+            await message.reply(f'Ошибка при получении каналов: {str(e)}')
+    else:
+        await message.reply('Доступ запрещен')
+
+
+# Test callback handler to see if any callbacks are being received
+async def test_callback(callback_query: types.CallbackQuery):
+    print(f"Test callback received: {callback_query.data}")
+    await callback_query.answer("Test callback received!")
+
+
+# Alternative callback handlers using decorators
+@dp.callback_query_handler(lambda c: c.data == 'test_button')
+async def test_callback_decorator(callback_query: types.CallbackQuery):
+    print(f"Decorator test callback received: {callback_query.data}")
+    await callback_query.answer("Decorator test callback received!")
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('select_channel_'))
+async def process_channel_selection_decorator(callback_query: types.CallbackQuery, state=FSMContext):
+    print(f"Decorator channel selection callback received: {callback_query.data}")
+    if callback_query.from_user.id == ID_MASTER:
+        try:
+            channel_id = callback_query.data.replace('select_channel_', '')
+            print(f"Selected channel_id: {channel_id}")
+            async with state.proxy() as data_material:
+                data_material['channel_id'] = channel_id
+            
+            await FSMmaterial.next()
+            await callback_query.message.reply('Введите название материала')
+            await callback_query.answer()
+        except Exception as e:
+            print(f"Error in decorator process_channel_selection: {e}")
+            await callback_query.message.reply(f'Ошибка при выборе канала: {str(e)}')
+            await callback_query.answer()
+    else:
+        await callback_query.answer('Доступ запрещен')
+
+
+# Бот ловит ответ и пишет в словарь название материала
+async def load_material_title(message: types.Message, state=FSMContext):
+    if message.from_user.id == ID_MASTER:
+        async with state.proxy() as data_material:
+            data_material['title'] = message.text
+        await FSMmaterial.next()
+        await message.reply('Выберите тип контента:\n1. Текст\n2. Фото\n3. Документ\n4. Видео\n5. Аудио\n\nОтправьте номер (1-5)')
+
+
+# Бот ловит ответ и пишет в словарь тип контента
+async def load_content_type(message: types.Message, state=FSMContext):
+    if message.from_user.id == ID_MASTER:
+        content_types = {
+            '1': 'text',
+            '2': 'photo', 
+            '3': 'document',
+            '4': 'video',
+            '5': 'audio'
+        }
+        
+        if message.text not in content_types:
+            await message.reply('Пожалуйста, введите число от 1 до 5')
+            return
+            
+        async with state.proxy() as data_material:
+            data_material['content_type'] = content_types[message.text]
+        
+        await FSMmaterial.next()
+        await message.reply('Отправьте контент (текст, фото, документ, видео или аудио)')
+
+
+# Бот ловит контент и сохраняет в словарь
+async def load_content(message: types.Message, state=FSMContext):
+    if message.from_user.id == ID_MASTER:
+        async with state.proxy() as data_material:
+            if message.content_type == 'text':
+                data_material['content'] = message.text
+                data_material['file_id'] = None
+            elif message.content_type == 'photo':
+                data_material['content'] = message.caption or ''
+                data_material['file_id'] = message.photo[0].file_id
+            elif message.content_type == 'document':
+                data_material['content'] = message.caption or ''
+                data_material['file_id'] = message.document.file_id
+            elif message.content_type == 'video':
+                data_material['content'] = message.caption or ''
+                data_material['file_id'] = message.video.file_id
+            elif message.content_type == 'audio':
+                data_material['content'] = message.caption or ''
+                data_material['file_id'] = message.audio.file_id
+            else:
+                await message.reply('Неподдерживаемый тип контента')
+                return
+        
+        await FSMmaterial.next()
+        await message.reply('Отправьте ссылку на обсуждение материала')
+
+
+# Бот ловит ссылку на обсуждение и сохраняет материал
+async def load_discussion_link(message: types.Message, state=FSMContext):
+    if message.from_user.id == ID_MASTER:
+        async with state.proxy() as data_material:
+            data_material['discussion_link'] = message.text
+
+        await sqlite_db.sql_add_commands_materials(state)
+        await state.finish()
+        await message.reply(f'Материал успешно добавлен!\nСсылка на обсуждение: {message.text}')
+
+
+"""Инлайн кнопки для удаления из базы сведений о каналах
 """
 
-#@dp.callback_query_handler(lambda x: x.data and x.data.startswith('del '))
-async def inform_delete_callback(callback_query: types.CallbackQuery):
-    await sqlite_db.delete_course(callback_query.data.replace('del ', ''))
-    await callback_query.answer(text=f'запись {callback_query.data.replace("del ", "")} удалена')
+#@dp.callback_query_handler(lambda x: x.data and x.data.startswith('del_channel '))
+async def inform_delete_callback_channels(callback_query: types.CallbackQuery):
+    await sqlite_db.delete_channel(callback_query.data.replace('del_channel_', ''))
+    await callback_query.answer(text=f'канал {callback_query.data.replace("del_channel_", "")} удален')
     
 
-#@dp.message_handler(Text(equals='Удалить Курс', ignore_case=True))
-async def delete_info(message: types.Message):
+#@dp.message_handler(Text(equals='Удалить Канал', ignore_case=True))
+async def delete_channel_info(message: types.Message):
     if message.from_user.id == ID_MASTER:
-        info = await sqlite_db.choose_delete_courses()
-        for info_c in info:
-            await bot.send_photo(message.from_user.id, info_c[1], f'{info_c[0]}\nОписание: {info_c[2]}')
-            await bot.send_message(message.from_user.id, text='Удалить?', reply_markup=InlineKeyboardMarkup().\
-                add(InlineKeyboardButton(f'delete {info_c[0]}', callback_data=f'del {info_c[0]}')))
+        info = await sqlite_db.choose_delete_channels()
+        for info_ch in info:
+            await bot.send_message(message.from_user.id, f'{info_ch[1]}\nID: {info_ch[0]}\nОписание: {info_ch[2]}')
+            await bot.send_message(message.from_user.id, text='Удалить канал?', reply_markup=InlineKeyboardMarkup().\
+                add(InlineKeyboardButton(f'delete {info_ch[0]}', callback_data=f'del_channel_{info_ch[0]}')))
 
 
-#@dp.callback_query_handler(lambda x: x.data and x.data.startswith('del '))
-async def inform_delete_callback_teachers(callback_query: types.CallbackQuery):
-    await sqlite_db.delete_teacher(callback_query.data.replace('del ', ''))
-    await callback_query.answer(text=f'запись {callback_query.data.replace("del ", "")} удалена')
-    
-
-#@dp.message_handler(Text(equals='Удалить Учителя', ignore_case=True))
-async def delete_teacher_info(message: types.Message):
+#@dp.message_handler(Text(equals='Просмотр Материалов', ignore_case=True))
+async def view_materials(message: types.Message):
     if message.from_user.id == ID_MASTER:
-        info = await sqlite_db.choose_delete_teachers()
-        for info_t in info:
-            await bot.send_photo(message.from_user.id, info_t[1], f'{info_t[0]}\nОписание: {info_t[2]}')
-            await bot.send_message(message.from_user.id, text='Удалить учителя?', reply_markup=InlineKeyboardMarkup().\
-                add(InlineKeyboardButton(f'delete {info_t[0]}', callback_data=f'del {info_t[0]}')))
+        await sqlite_db.sql_read_materials(message)
 
+
+#@dp.message_handler(Text(equals='Просмотр Каналов', ignore_case=True))
+async def view_channels(message: types.Message):
+    if message.from_user.id == ID_MASTER:
+        await sqlite_db.sql_read_from_channels(message)
+
+
+# Test message handler
+async def test_message(message: types.Message):
+    print(f"Test message received: {message.text}")
+    await message.reply("Test message received!")
 
 
 """Регистрируем хендлеры
@@ -236,33 +285,33 @@ async def delete_teacher_info(message: types.Message):
 
 
 def handlers_register_manage(dp: Dispatcher):
-    # FSM для курсов
+    # FSM для каналов
     dp.register_message_handler(verify_owner, commands=['moderate'])
-    dp.register_message_handler(
-        add_course, Text(equals='Загрузить Курс', ignore_case=True), state=None)
     dp.register_message_handler(
         cancel_state, Text(equals='Отмена Загрузки'), state="*")
     dp.register_message_handler(cancel_state, F.text.contains(
         ['отмена', 'stop']).lower(), state="*")
-    dp.register_message_handler(load_title, state=FSMcourses.title)
-    dp.register_message_handler(load_photo, content_types=['photo'], state=FSMcourses.photo)
-    dp.register_message_handler(load_description, state=FSMcourses.description)
-    dp.register_message_handler(load_timetable, state=FSMcourses.timetable)
-    dp.register_message_handler(
-        load_duration, state=FSMcourses.duration_of_lesson)
-    dp.register_message_handler(load_price, state=FSMcourses.price_of_lesson)
     
-
-    # FSM для учителей
-    dp.register_message_handler(add_teacher, Text(equals='Загрузить Учителя', ignore_case=True), state=None)
-    dp.register_message_handler(load_name, state=FSMteacher.name)
-    dp.register_message_handler(load_teacher_photo, content_types=['photo'], state=FSMteacher.photo)
-    dp.register_message_handler(
-        load_teacher_description, state=FSMteacher.description)
-    dp.register_message_handler(load_teacher_courses, state=FSMteacher.courses)
+    dp.register_message_handler(add_channel, Text(equals='Добавить Канал', ignore_case=True), state=None)
+    dp.register_message_handler(load_channel_id, state=FSMchannel.channel_id)
+    dp.register_message_handler(load_channel_title, state=FSMchannel.title)
+    dp.register_message_handler(load_channel_description, state=FSMchannel.description)
+    dp.register_message_handler(load_channel_topic, state=FSMchannel.topic)
+    
+    # FSM для материалов
+    dp.register_message_handler(add_material, Text(equals='Добавить Материал', ignore_case=True), state=None)
+    dp.register_message_handler(load_material_title, state=FSMmaterial.title)
+    dp.register_message_handler(load_content_type, state=FSMmaterial.content_type)
+    dp.register_message_handler(load_content, content_types=['text', 'photo', 'document', 'video', 'audio'], state=FSMmaterial.content)
+    dp.register_message_handler(load_discussion_link, state=FSMmaterial.discussion_link)
+    
+    # Callback query handlers - register them separately
+    dp.register_callback_query_handler(process_channel_selection_decorator, lambda c: c.data.startswith('select_channel_'))
+    dp.register_callback_query_handler(test_callback_decorator, lambda c: c.data == 'test_button')
+    dp.register_callback_query_handler(inform_delete_callback_channels, lambda c: c.data.startswith('del_channel_'))
     
     # Удаление данных
-    dp.register_callback_query_handler(inform_delete_callback, lambda x: x.data and x.data.startswith('del '))
-    dp.register_message_handler(delete_info, Text(equals='Удалить Курс', ignore_case=True))
-    dp.callback_query_handler(inform_delete_callback_teachers, lambda x: x.data and x.data.startswith('del '))
-    dp.register_message_handler(delete_teacher_info, Text(equals='Удалить Учителя', ignore_case=True))
+    dp.register_message_handler(delete_channel_info, Text(equals='Удалить Канал', ignore_case=True))
+    dp.register_message_handler(view_materials, Text(equals='Просмотр Материалов', ignore_case=True))
+    dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
+    dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
