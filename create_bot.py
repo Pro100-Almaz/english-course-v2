@@ -8,7 +8,9 @@ load_dotenv(find_dotenv())
 
 storage = MemoryStorage()
 
-bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
 bot_address = os.getenv('BOT_NAME')
@@ -16,4 +18,4 @@ bot_address = os.getenv('BOT_NAME')
 master_id = os.getenv('OWNER_NAME')
 
 client_commands = ['/start', '/help', 'Преподаватели', 'Тренировки', 'Режим работы',\
-    'Контакты', '/moderate']
+                   'Контакты', '/moderate', '/buy']

@@ -310,8 +310,8 @@ def handlers_register_manage(dp: Dispatcher):
     dp.register_callback_query_handler(test_callback_decorator, lambda c: c.data == 'test_button')
     dp.register_callback_query_handler(inform_delete_callback_channels, lambda c: c.data.startswith('del_channel_'))
     
-    # Удаление данных
     dp.register_message_handler(delete_channel_info, Text(equals='Удалить Канал', ignore_case=True))
     dp.register_message_handler(view_materials, Text(equals='Просмотр Материалов', ignore_case=True))
     dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
     dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
+
