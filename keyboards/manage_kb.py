@@ -1,11 +1,12 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
-download_course_but = KeyboardButton('Загрузить Курс')
-download_teacher_but = KeyboardButton('Загрузить Учителя')
+download_channel_but = KeyboardButton('Добавить Канал')
+download_material_but = KeyboardButton('Добавить Материал')
+view_materials_but = KeyboardButton('Просмотр Материалов')
+view_channels_but = KeyboardButton('Просмотр Каналов')
 canceal_but = KeyboardButton('Отмена Загрузки')
-delete_but_course = KeyboardButton('Удалить Курс')
-delete_but_teacher = KeyboardButton('Удалить Учителя')
+delete_but_channel = KeyboardButton('Удалить Канал')
 
 
 kb_manage = ReplyKeyboardMarkup(resize_keyboard=True)
-kb_manage.add(canceal_but).add(download_course_but).insert(delete_but_course).add(download_teacher_but).insert(delete_but_teacher)
+kb_manage.add(canceal_but).add(download_channel_but).insert(delete_but_channel).add(download_material_but).insert(view_materials_but).add(view_channels_but)
