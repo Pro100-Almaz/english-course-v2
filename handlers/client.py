@@ -74,4 +74,3 @@ def handlers_register(dp: Dispatcher):
     dp.register_message_handler(get_work_hours, Text(equals='Режим работы', ignore_case=True))
     dp.register_message_handler(get_training_courses, Text(equals='Тренировки', ignore_case=True))
     dp.register_message_handler(get_trainers_info, Text(equals='Преподаватели', ignore_case=True))
-    dp.register_message_handler(random_message, )
