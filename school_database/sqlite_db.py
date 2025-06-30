@@ -30,6 +30,7 @@ def bot_tables_sql():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
                 url TEXT UNIQUE NOT NULL,
+                description TEXT,
                 channel_id TEXT NOT NULL DEFAULT '-1002519961960'
             )
             """
@@ -68,8 +69,20 @@ def bot_tables_sql():
         cur = conn.execute("SELECT COUNT(*) AS cnt FROM courses")
         if cur.fetchone()["cnt"] == 0:
             conn.executemany(
-                "INSERT INTO  courses (name, url) VALUES (?, ?)",
-                [("Экспресс-грамматика", "https://t.me/+uKg4xGQ0MDtkMTBi"), ("Путешествия", "https://t.me/+umKj0R00Rb9jNzE6")]
+                "INSERT INTO  courses (name, url, description) VALUES (?, ?, ?)",
+                [
+                    ("Grammar Shots", "https://t.me/+0s5EUexRd0tmMTFi", "Здесь ты найдёшь короткие и понятные "
+                                                                              "видеоуроки (10–15 минут), где я просто "
+                                                                              "объясняю сложные правила."),
+                    ("Daily Dose", "https://t.me/+2WlfIjQ55eFhZjJi", "Здесь мы делимся всем, что цепляет нас прямо "
+                                                                      "сейчас: мысли, советы, фильмы, путешествия, "
+                                                                      "события, лайфхаки."),
+                    ("Mentor Support", "https://t.me/+HnvGAVdmN1YzNzJi", "Здесь ты можешь задавать любой вопрос по "
+                                                                         "обучению — в любое время, 24/7.\n"
+                                                                         "Наши преподаватели и команда всегда на связи, "
+                                                                         "чтобы помочь тебе разобраться и не оставить "
+                                                                         "без ответа.")
+                ]
             )
 
         conn.commit()
@@ -86,8 +99,25 @@ def load_courses_url():
 def load_courses_url():
     with get_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT name, channel_id FROM courses ORDER BY id")
-        return { row["name"]: row['channel_id'] for row in cur.fetchall() }
+        cur.execute("SELECT name, url FROM courses ORDER BY id")
+        return { row["name"]: row['url'] for row in cur.fetchall() }
+
+
+def load_courses_text() -> str:
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, url, description
+              FROM courses
+          ORDER BY id
+        """)
+        # if your cursor returns tuples change to `for name, url, description in cur.fetchall():`
+        return [
+            {'name': row['name'],
+             'url': row['url'],
+             'description': row['description']}
+            for row in cur.fetchall()
+        ]
 
 
 # Record payment only if not exists
