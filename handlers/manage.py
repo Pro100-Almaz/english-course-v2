@@ -216,7 +216,7 @@ async def process_update_input(message: types.Message, state: FSMContext):
         pinned  = chat.pinned_message
         if not pinned:
             # nothing pinned yet → send & pin
-            sent = await bot.send_message(chat_id, newval, parse_mode=ParseMode.HTML)
+            sent = await bot.send_message(chat_id, newval, parse_mode=types.ParseMode.HTML)
             await bot.pin_chat_message(chat_id, sent.message_id, disable_notification=True)
             await message.reply("✅ Сообщение отправлено и закреплено в канале.")
         else:
@@ -225,7 +225,7 @@ async def process_update_input(message: types.Message, state: FSMContext):
                 chat_id=chat_id,
                 message_id=pinned.message_id,
                 text=newval,
-                parse_mode=ParseMode.HTML,
+                parse_mode=types.ParseMode.HTML,
                 disable_web_page_preview=True
             )
             await message.reply("✅ Текст закреплённого сообщения обновлён!")
