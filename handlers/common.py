@@ -5,7 +5,7 @@ from aiogram import types
 #@dp.message_handler() # Фильтрация спама и мата в чате клиентской части
 async def clean_chat(message: types.Message):
      # Only clean messages in groups, not in private chats
-     if message.chat.type != 'private' and message.text not in client_commands:
+     if message.chat.type == 'private' and message.text not in client_commands:
          await message.delete()
          await bot.send_message(message.from_user.id, 'Бот Вас не понял, пожалуйста воспользуйтесь командами на клавиатуре')
          

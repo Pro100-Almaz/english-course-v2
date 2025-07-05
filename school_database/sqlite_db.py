@@ -8,7 +8,6 @@ import os
 import sqlite3
 from aiogram import types
 from aiogram.types import user
-from create_bot import bot
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'bot_sql.db')
@@ -31,7 +30,8 @@ def bot_tables_sql():
                 name TEXT UNIQUE NOT NULL,
                 url TEXT UNIQUE NOT NULL,
                 description TEXT,
-                channel_id TEXT NOT NULL DEFAULT '-1002519961960'
+                channel_id TEXT NOT NULL DEFAULT '-1002519961960',
+                navigation_text TEXT
             )
             """
         )
@@ -92,15 +92,8 @@ def bot_tables_sql():
 def load_courses_url():
     with get_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT name, url FROM courses ORDER BY id")
-        return { row["name"]: row["url"] for row in cur.fetchall() }
-
-
-def load_courses_url():
-    with get_connection() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT name, url FROM courses ORDER BY id")
-        return { row["name"]: row['url'] for row in cur.fetchall() }
+        cur.execute("SELECT name, channel_id FROM courses ORDER BY id")
+        return { row["name"]: row["channel_id"] for row in cur.fetchall() }
 
 
 def load_courses_text() -> str:

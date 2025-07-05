@@ -18,10 +18,11 @@ ID_MASTER = int(master_id)
 
 
 class FSMchannel(StatesGroup):
-    channel_id = State()
-    title = State()
-    description = State()
-    topic = State()
+    url           = State()  # Step 1: URL of the channel
+    forward       = State()  # Step 2: forwarded message from channel
+    title         = State()
+    description   = State()
+    topic         = State()
 
 
 class FSMmaterial(StatesGroup):
@@ -31,6 +32,12 @@ class FSMmaterial(StatesGroup):
     content = State()
     file = State()
     discussion_link = State()
+
+
+class FSMChannelUpdate(StatesGroup):
+    choose_channel = State()
+    choose_param   = State()
+    input_value    = State()
 
 
 """Бот проверяет является ли пользователь хозяином бота.
@@ -68,47 +75,162 @@ async def cancel_state(message: types.Message, state=FSMContext):
 """
 # Начало загрузки данных о канале
 async def add_channel(message: types.Message):
-    if message.from_user.id == ID_MASTER:
-        await FSMchannel.channel_id.set()
-        await message.reply('Загрузи ID канала (например: @channel_name или -1001234567890)')
+    if message.from_user.id != ID_MASTER:
+        return await message.reply("🚫 Доступ запрещён.")
+
+    await FSMchannel.url.set()
+    await message.reply(
+        "Шаг 1/5: Отправьте URL канала (например https://t.me/my_channel или пригласительную ссылку)."
+    )
 
 
-# Бот ловит ответ и пишет в словарь ID канала
-async def load_channel_id(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_channel:
-            data_channel['channel_id'] = message.text
-        await FSMchannel.next()
-        await message.reply('Загрузи название канала')
+async def load_channel_url(message: types.Message, state: FSMContext):
+    if message.from_user.id != ID_MASTER:
+        return
+    async with state.proxy() as data:
+        data['url'] = message.text.strip()
+    await FSMchannel.next()
+    await message.reply(
+        "Шаг 2/5: Перешлите любое сообщение из этого канала, чтобы бот узнал его numeric ID."
+    )
 
 
-# Бот ловит ответ и пишет в словарь название канала
-async def load_channel_title(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_channel:
-            data_channel['title'] = message.text
-        await FSMchannel.next()
-        await message.reply('Загрузи описание канала')
+async def load_channel_forward(message: types.Message, state: FSMContext):
+    if message.from_user.id != ID_MASTER:
+        return
+
+    if not message.forward_from_chat or message.forward_from_chat.type != 'channel':
+        return await message.reply("❗️ Пожалуйста, перешлите сообщение именно из канала.")
+
+    channel_chat = message.forward_from_chat
+    async with state.proxy() as data:
+        data['channel_id'] = channel_chat.id
+        data['channel_username'] = getattr(channel_chat, 'username', None)
+
+    # -> move to title entry
+    await FSMchannel.next()  # FSMchannel.title
+    await message.reply("Шаг 3/5: Введите название канала:")
 
 
-# Бот ловит ответ и пишет в словарь описание канала
-async def load_channel_description(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_channel:
-            data_channel['description'] = message.text
-        await FSMchannel.next()
-        await message.reply('Загрузи тему канала')
+async def load_channel_title(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['title'] = message.text.strip()
+    await FSMchannel.next()  # FSMchannel.description
+    await message.reply("Шаг 4/5: Введите описание канала:")
 
 
-# Бот ловит ответ и пишет в словарь тему канала
-async def load_channel_topic(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
-        async with state.proxy() as data_channel:
-            data_channel['topic'] = message.text
+async def load_channel_description(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['description'] = message.text.strip()
+    await FSMchannel.next()  # FSMchannel.topic
+    await message.reply("Шаг 5/5: Введите тему канала:")
 
+
+async def load_channel_topic(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['topic'] = message.text.strip()
         await sqlite_db.sql_add_commands_channels(state)
-        await state.finish()
-        await message.reply('Загрузка информации о канале окончена')
+
+    await state.finish()
+    await message.reply("✅ Информация о канале успешно добавлена.")
+
+
+"""Запуск FSM для обновления информации о каналах
+"""
+async def update_channel(message: types.Message):
+    if message.from_user.id != ID_MASTER:
+        return await message.reply("🚫 Доступ запрещён.")
+
+    channels = sqlite_db.load_courses_url()
+
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name, ch_id in channels.items():
+        kb.add(
+            InlineKeyboardButton(
+                text=name,
+                callback_data = f"upd_ch_{ch_id}"
+            )
+        )
+
+    await FSMChannelUpdate.choose_channel.set()
+    await message.reply(
+        "Выберите канал, который хотите обновить:",
+        reply_markup=kb
+    )
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("upd_ch_"), state=FSMChannelUpdate.choose_channel)
+async def process_channel_chosen(cb: types.CallbackQuery, state: FSMContext):
+    ch_id = int(cb.data.split("_")[-1])
+    await state.update_data(channel_id=ch_id)
+
+    kb = InlineKeyboardMarkup(row_width=2).add(
+        InlineKeyboardButton("🖋 Название",      callback_data="upd_param_title"),
+        InlineKeyboardButton("✍️ Описание",     callback_data="upd_param_description"),
+        InlineKeyboardButton("📚 Тема",          callback_data="upd_param_topic"),
+        InlineKeyboardButton("📌 Pinned-текст", callback_data="upd_param_pinned"),
+    )
+    await FSMChannelUpdate.next()  # -> choose_param
+    await cb.message.edit_text("Шаг 2/3: Что нужно обновить?", reply_markup=kb)
+    await cb.answer()
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("upd_param_"), state=FSMChannelUpdate.choose_param)
+async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
+    param = cb.data.split("_")[-1]
+    await state.update_data(param=param)
+
+    prompt = {
+        'title':       "Введите новое <b>название</b> канала:",
+        'description': "Введите новое <b>описание</b> канала:",
+        'topic':       "Введите новую <b>тему</b> канала:",
+        'pinned':      "Введите новый <b>текст закреплённого сообщения</b>:",
+    }[param]
+
+    await FSMChannelUpdate.next()  # -> input_value
+    await cb.message.edit_text(prompt, parse_mode=types.ParseMode.HTML)
+    await cb.answer()
+
+
+# Step 4) Receive the new value & apply
+@dp.message_handler(state=FSMChannelUpdate.input_value)
+async def process_update_input(message: types.Message, state: FSMContext):
+    data   = await state.get_data()
+    ch_id  = data['channel_id']
+    param  = data['param']
+    newval = message.text.strip()
+
+    # 4a) If it’s a DB field (title/description/topic), update your table
+    if param in ('title', 'description', 'topic'):
+        await sqlite_db.sql_update_channel_field(ch_id, param, newval)
+        await message.reply(f"✅ Поле <b>{param}</b> обновлено!", parse_mode=types.ParseMode.HTML)
+
+    # 4b) If it’s the pinned message text, edit in Telegram
+    else:  # param == 'pinned'
+        # 1) get chat record from DB to know its Telegram chat_id
+        rec = await sqlite_db.get_channel_by_id(ch_id)
+        chat_id = rec['channel_id']  # stored numeric ID or '@username'
+
+        # 2) fetch the current pinned message
+        chat    = await bot.get_chat(chat_id)
+        pinned  = chat.pinned_message
+        if not pinned:
+            # nothing pinned yet → send & pin
+            sent = await bot.send_message(chat_id, newval, parse_mode=ParseMode.HTML)
+            await bot.pin_chat_message(chat_id, sent.message_id, disable_notification=True)
+            await message.reply("✅ Сообщение отправлено и закреплено в канале.")
+        else:
+            # edit existing pinned
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=pinned.message_id,
+                text=newval,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+            await message.reply("✅ Текст закреплённого сообщения обновлён!")
+
+    await state.finish()
 
 
 """Запуск FSM для внесения материалов
@@ -291,12 +413,30 @@ def handlers_register_manage(dp: Dispatcher):
         cancel_state, Text(equals='Отмена Загрузки'), state="*")
     dp.register_message_handler(cancel_state, F.text.contains(
         ['отмена', 'stop']).lower(), state="*")
-    
+
     dp.register_message_handler(add_channel, Text(equals='Добавить Канал', ignore_case=True), state=None)
-    dp.register_message_handler(load_channel_id, state=FSMchannel.channel_id)
+    dp.register_message_handler(load_channel_url, state=FSMchannel.url)
+    dp.register_message_handler(load_channel_forward, content_types=types.ContentTypes.ANY, state=FSMchannel.forward)
     dp.register_message_handler(load_channel_title, state=FSMchannel.title)
     dp.register_message_handler(load_channel_description, state=FSMchannel.description)
     dp.register_message_handler(load_channel_topic, state=FSMchannel.topic)
+
+    dp.register_message_handler(update_channel,
+                                Text(equals='Обновить Канал', ignore_case=True), state=None)
+
+    dp.register_callback_query_handler(
+        process_channel_chosen,
+        lambda c: c.data.startswith("upd_ch_"),
+        state=FSMChannelUpdate.choose_channel)
+
+    dp.register_callback_query_handler(
+        process_param_chosen,
+        lambda c: c.data.startswith("upd_param_"),
+        state=FSMChannelUpdate.choose_param)
+
+    dp.register_message_handler(
+        process_update_input,
+        state=FSMChannelUpdate.input_value)
     
     # FSM для материалов
     dp.register_message_handler(add_material, Text(equals='Добавить Материал', ignore_case=True), state=None)
