@@ -133,3 +133,4 @@ dmypy.json
 .Environments
 .env
 test.py
+.db
