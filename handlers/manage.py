@@ -2,7 +2,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, MessageEntity
 from magic_filter import F
 from create_bot import dp, bot, master_id
 from school_database import sqlite_db
@@ -50,6 +50,7 @@ class FSMChannelUpdate(StatesGroup):
 #@dp.message_handler(commands=['moderate'])
 async def verify_owner(message: types.Message):
     id_check = message.from_user.id
+    print(id_check)
     if id_check == ID_MASTER:
         await bot.send_message(message.from_user.id, 'Готов к работе, пожалуйста выбери команды на клавиатуре', reply_markup=kb_manage)
         
@@ -169,6 +170,8 @@ async def process_channel_chosen(cb: types.CallbackQuery, state: FSMContext):
         InlineKeyboardButton("✍️ Описание",     callback_data="upd_param_description"),
         InlineKeyboardButton("📚 Тема",          callback_data="upd_param_topic"),
         InlineKeyboardButton("📌 Pinned-текст", callback_data="upd_param_pinned"),
+        InlineKeyboardButton("🚦 Навигационный текст", callback_data="upd_param_navigation"),
+        InlineKeyboardButton("❌ Удалить навигацию", callback_data="upd_param_nav_delete")
     )
     await FSMChannelUpdate.next()  # -> choose_param
     await cb.message.edit_text("Шаг 2/3: Что нужно обновить?", reply_markup=kb)
@@ -180,17 +183,31 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
     param = cb.data.split("_")[-1]
     await state.update_data(param=param)
 
-    prompt = {
-        'title':       "Введите новое <b>название</b> канала:",
-        'description': "Введите новое <b>описание</b> канала:",
-        'topic':       "Введите новую <b>тему</b> канала:",
-        'pinned':      "Введите новый <b>текст закреплённого сообщения</b>:",
-    }[param]
+    prompts = {
+        'title':       "Введите новое название канала:",
+        'description': "Введите новое описание канала:",
+        'topic':       "Введите новую тему канала:",
+        'pinned':      "Введите новый текст закреплённого сообщения:",
+        'navigation': "Введите новый навигационный текст (Markdown HTML): \n"
+    }
+    if param not in prompts:#если выбрали удалить
+        data = await state.get_data()
+        ch_id = data['channel_id']
+        rec = sqlite_db.get_channel_by_id(ch_id)
+        if rec['nav_message_id'] is None:
+            cb.message.answer("На этом канале нету навигационного сообщения.")
+        else:
+            await bot.delete_message(rec['channel_id'], rec['nav_message_id'])
+            sqlite_db.update_channel_field(ch_id, 'nav_message_id', None)
+            sqlite_db.update_channel_field(ch_id, 'navigation_text', None)
+            await cb.message.answer("Навигационное сообщение удалено!")
 
-    await FSMChannelUpdate.next()  # -> input_value
-    await cb.message.edit_text(prompt, parse_mode=types.ParseMode.HTML)
-    await cb.answer()
-
+        await state.finish()
+        return
+    else :
+        await cb.message.answer(prompts[param])
+        await FSMChannelUpdate.next()
+        await cb.answer()
 
 # Step 4) Receive the new value & apply
 @dp.message_handler(state=FSMChannelUpdate.input_value)
@@ -199,6 +216,17 @@ async def process_update_input(message: types.Message, state: FSMContext):
     ch_id  = data['channel_id']
     param  = data['param']
     newval = message.text.strip()
+    kb = InlineKeyboardMarkup(row_width=2)
+
+    #if there is any hyperlinks add them to inline keyboard
+    for entity in message.entities:
+        if entity.type == 'text_link': #проверяем на гиперсслку
+            print(entity)
+            print(message.text)
+            text = message.text[entity.offset:entity.offset + entity.length]
+            kb.add(InlineKeyboardButton(text= text, url=entity.url))
+
+    print(kb)
 
     # 4a) If it’s a DB field (title/description/topic), update your table
     if param in ('title', 'description', 'topic'):
@@ -208,27 +236,38 @@ async def process_update_input(message: types.Message, state: FSMContext):
     # 4b) If it’s the pinned message text, edit in Telegram
     else:  # param == 'pinned'
         # 1) get chat record from DB to know its Telegram chat_id
-        rec = await sqlite_db.get_channel_by_id(ch_id)
+        rec = sqlite_db.get_channel_by_id(ch_id)
         chat_id = rec['channel_id']  # stored numeric ID or '@username'
-
         # 2) fetch the current pinned message
         chat    = await bot.get_chat(chat_id)
         pinned  = chat.pinned_message
         if not pinned:
             # nothing pinned yet → send & pin
-            sent = await bot.send_message(chat_id, newval, parse_mode=types.ParseMode.HTML)
+            sent = await bot.send_message(
+                chat_id= chat_id,
+                text=newval,
+                reply_markup=kb,
+                parse_mode=types.ParseMode.HTML
+            )
             await bot.pin_chat_message(chat_id, sent.message_id, disable_notification=True)
+            sqlite_db.update_channel_field(ch_id, 'nav_message_id', sent.message_id)
             await message.reply("✅ Сообщение отправлено и закреплено в канале.")
         else:
             # edit existing pinned
-            await bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=pinned.message_id,
-                text=newval,
-                parse_mode=types.ParseMode.HTML,
-                disable_web_page_preview=True
-            )
-            await message.reply("✅ Текст закреплённого сообщения обновлён!")
+            try:
+                await bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=pinned.message_id,
+                    text=newval,
+                    reply_markup=kb,
+                    parse_mode=types.ParseMode.HTML,
+                    disable_web_page_preview=True
+                )
+                sqlite_db.update_channel_field(ch_id, 'nav_message_id', pinned.message_id,)
+                await message.reply("✅ Текст закреплённого сообщения обновлён!")
+            except errors.MessageNotModified:
+                await bot.send_message("The message you have sent is exactly the same as the pinned message.")
+
 
     await state.finish()
 

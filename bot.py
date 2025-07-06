@@ -11,9 +11,17 @@ async def on_startup(_):
 def on_shutdown(_):
     print('Бот сдох')
 
+print("📦 Регистрируем manage")
 manage.handlers_register_manage(dp)
+
+print("📦 Регистрируем payment")
 payment.handlers_register(dp)
-common.register_common_handlers(dp)
+
+print("📦 Регистрируем client")
 client.handlers_register(dp)
 
+print("📦 Регистрируем common")
+common.register_common_handlers(dp)
+
+print("⚙️ Запускаем executor...")
 executor.start_polling(dp, skip_updates=True, on_startup=on_startup, on_shutdown=on_shutdown)

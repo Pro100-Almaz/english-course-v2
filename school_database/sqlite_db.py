@@ -8,6 +8,7 @@ import os
 import sqlite3
 from aiogram import types
 from aiogram.types import user
+from aiogram.dispatcher import FSMContext
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'bot_sql.db')
@@ -31,7 +32,8 @@ def bot_tables_sql():
                 url TEXT UNIQUE NOT NULL,
                 description TEXT,
                 channel_id TEXT NOT NULL DEFAULT '-1002519961960',
-                navigation_text TEXT
+                navigation_text TEXT,
+                nav_message_id INTEGER 
             )
             """
         )
@@ -111,6 +113,40 @@ def load_courses_text() -> str:
              'description': row['description']}
             for row in cur.fetchall()
         ]
+
+
+
+def get_channel_by_id(channel_id: str | int) -> dict | None:
+    """Возвращает запись курса по Telegram channel_id"""
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM courses WHERE channel_id = ?", (str(channel_id),))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def update_channel_field(channel_id: str | int, field: str, value):
+    """Обновляет произвольное поле в таблице courses по channel_id"""
+    with get_connection() as conn:
+        conn.execute(
+            f"UPDATE courses SET {field} = ? WHERE channel_id = ?",
+            (value, str(channel_id))
+        )
+        conn.commit()
+
+async def sql_add_commands_channels(state: FSMContext):
+    """Сохраняет новый канал в таблице courses на основе данных FSMContext"""
+    data = await state.get_data()
+    name = data.get('title')
+    url = data.get('url')
+    description = data.get('description')
+    channel_id = data.get('channel_id')
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO courses (name, url, description, channel_id) VALUES (?, ?, ?, ?)",
+            (name, url, description, str(channel_id))
+        )
+        conn.commit()
 
 
 # Record payment only if not exists

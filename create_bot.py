@@ -18,4 +18,4 @@ bot_address = os.getenv('BOT_NAME')
 master_id = os.getenv('OWNER_NAME')
 
 client_commands = ['/start', '/help', 'Преподаватели', 'Тренировки', 'Режим работы',\
-                   'Контакты', '/moderate', '/buy']
+                   'Контакты', '/moderate', '/buy', '/ping']
