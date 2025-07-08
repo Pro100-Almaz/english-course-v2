@@ -219,14 +219,15 @@ async def process_update_input(message: types.Message, state: FSMContext):
     kb = InlineKeyboardMarkup(row_width=2)
 
     #if there is any hyperlinks add them to inline keyboard
-    for entity in message.entities:
-        if entity.type == 'text_link': #проверяем на гиперсслку
-            print(entity)
-            print(message.text)
-            text = message.text[entity.offset:entity.offset + entity.length]
-            kb.add(InlineKeyboardButton(text= text, url=entity.url))
 
-    print(kb)
+    for entity in message.entities:
+        print(entity)
+        if entity.type == 'url':
+            text = entity.get_text(message.text)
+            kb.add(InlineKeyboardButton(text=text, url=text))
+        if entity.type == 'text_link':
+            text = entity.get_text(message.text)
+            kb.add(InlineKeyboardButton(text=text, url=entity.url))
 
     # 4a) If it’s a DB field (title/description/topic), update your table
     if param in ('title', 'description', 'topic'):

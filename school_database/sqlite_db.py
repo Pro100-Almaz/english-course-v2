@@ -217,6 +217,19 @@ def get_user_by_id(user_id: int) -> types.User | None:
 
         return types.User(cur.fetchone())
 
+def update_user_info(user_id: str | int, field: str, value):
+    """Обновляет произвольное поле в таблице users по user_id"""
+    with get_connection() as conn:
+        conn.execute(
+            f"UPDATE users SET {field} = ? WHERE user_id = ?",
+            (value, str(user_id))
+        )
+        conn.commit()
+
+def get_user_payment_status(user_id: int) -> int | None:
+    with get_connection() as conn:
+        cur = conn.execute("SELECT payment_status FROM users WHERE user_id = ?", (user_id,))
+        return cur.fetchone()["payment_status"]
 
 def load_support():
     with get_connection() as conn:
