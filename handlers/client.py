@@ -1,8 +1,8 @@
 import html
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
-from create_bot import bot, bot_address
-from keyboards import kb_client
+from create_bot import bot, bot_address, dp
+from keyboards import kb_client, kb_start
 from school_database import sqlite_db
 from handlers.payment import payment_handler
 from school_database.sqlite_db import get_support
@@ -12,45 +12,70 @@ from school_database.sqlite_db import get_support
 async def start_bot(message: types.Message):
     user_id = message.from_user.id
     print("user id is", user_id)
-
     sqlite_db.save_new_user(message.from_user)
-    if not sqlite_db.record_payment(user_id):
+    if not sqlite_db.get_user_payment_status(user_id):      #если пользователь уже является клиентом
         try:
-            await bot.send_message(message.chat.id, 
-                                   f'🎉 Добро пожаловать в наш канал!\n'
+            await bot.send_message(message.chat.id,
+                                   f'Привет! Я бот-помощник закрытого канала по английскому языку!\n'
                                    f'Ты сделал первый шаг к новым знаниям, развитию и позитивным переменам!\n\n'
-                                   f'Вот что тебя ждёт:\n\n'
-                                   f'📌 Ежемесячные видеокурсы\n'
-                                   f'Каждый месяц тебя ждёт новый курс — смотри, учись и применяй на практике!\n'
-                                   f'💡 Ежедневная польза\n'
-                                   f'Советы, задания, мотивация и фишки, которые помогут расти каждый день.\n\n'
-                                   f'🎙 Живые эфиры каждую неделю\n'
-                                   f'Общаемся, обсуждаем важное, отвечаем на твои вопросы в прямом эфире!\n\n'
-                                   f'🤝 Поддержка от кураторов\n'
-                                   f'Наши кураторы всегда на связи:\n'
-                                   f'✅ Ответят на вопросы\n'
-                                   f'✅ Помогут с заданиями\n'
-                                   f'✅ Организуют челленджи, чтобы тебе было интересно и ты не бросал начатое!\n\n'
-                                   f'💳 Подписка на 1 месяц — 8000 тг\n'
-                                   f'Можете оплатить по ссылке внизу👇\n'
-                                   f'После оплаты обязательно отправьте чек об оплате, чтобы мы активировали доступ.',
-                                   reply_markup=None)
-            await payment_handler(message)
+                                   f'Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг',
+                                   reply_markup=kb_start)
             await message.delete()
+            return
         except Exception as e:
-            await message.reply(f'Пожалуйста напишите боту в ЛС: {bot_address}\n\nОшибка: {str(e)}')
-        return
-    try:
-        await bot.send_message(message.chat.id, 
+            await message.reply(f'Пожалуйста напишите боту в ЛС1: {bot_address}\n\nОшибка: {str(e)}')
+
+    try:                                   #если пользователь только собирается оплатить курс
+        await bot.send_message(message.chat.id,
                                f'Добро пожаловать обратно! Вы уже оплатили подписку.\n\n'
                                f'Пожалуйста воспользуйтесь клавиатурой, чтобы узнать больше о нашем центре.',
                                reply_markup=kb_client)
         await message.delete()
     except Exception as e:
-        await message.reply(f'Пожалуйста напишите боту в ЛС: {bot_address}\n\nОшибка: {str(e)}')
+        await message.reply(f'Пожалуйста напишите боту в ЛС2: {bot_address}\n\nОшибка: {str(e)}')
+
+@dp.callback_query_handler(lambda c: c.data.startswith('client_start_'))
+async def handle_payment(cb: types.CallbackQuery):
+    param = cb.data.split('_')[-1]
+    user_id = cb.message.from_user.id
+    message = cb.message
+    if param == 'payment':
+        message.answer(f'💳 Подписка на 1 месяц — 8000 тг \n'
+                       f'Можете оплатить по ссылке внизу👇\n'
+                       f'После оплаты обязательно отправьте чек об оплате, чтобы мы активировали доступ.')
+        await payment_handler(message) #оформить подписку и изменить статус подписки в бд
+
+    if param == 'info':
+        await message.answer('Вот что тебя ждёт:\n\n'
+                             f'📌 Ежемесячные видеокурсы\n'
+                             f'Каждый месяц тебя ждёт новый курс — смотри, учись и применяй на практике!\n'
+                             f'💡 Ежедневная польза\n'
+                             f'Советы, задания, мотивация и фишки, которые помогут расти каждый день.\n\n'
+                             f'🎙 Живые эфиры каждую неделю\n'
+                             f'Общаемся, обсуждаем важное, отвечаем на твои вопросы в прямом эфире!\n\n'
+                             f'🤝 Поддержка от кураторов\n'
+                             f'Наши кураторы всегда на связи:\n'
+                             f'✅ Ответят на вопросы\n'
+                             f'✅ Помогут с заданиями\n'
+                             f'✅ Организуют челленджи, чтобы тебе было интересно и ты не бросал начатое!\n\n'
+                             f'💳 Подписка на 1 месяц — 8000 тг\n'
+                             f'Можете оплатить нажав на кнопку "Оформить подписку" внизу👇\n'
+                             f'После оплаты обязательно отправьте чек об оплате, чтобы мы активировали доступ.',
+                             reply_markup=kb_start)
+        await message.delete()
+    if param == 'support':
+        await message.answer('Если у вас еще остались вопросы то можете написать по следующему телеграм хэнлу\n'
+                             'Sandugash - @Sakokas',
+                             reply_markup=kb_start)
 
 
 async def get_main_channel(message: types.Message):
+    if not sqlite_db.get_user_payment_status(message.from_user.id):
+        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+                       reply_markup=kb_start)
+        await message.delete()
+        return
+
     text = (
         'Вот наш основной канал с навигатором и с ежедневными новостями:\n'
         f'<a href="https://t.me/+dMdXRs8TTa5lMzli">Ссылка на канал!</a>\n'
@@ -64,6 +89,12 @@ async def get_main_channel(message: types.Message):
 
 
 async def get_courses(message: types.Message):
+    if not sqlite_db.get_user_payment_status(message.from_user.id):
+        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+                       reply_markup=kb_start)
+        await message.delete()
+        return
+
     courses = sqlite_db.load_courses_text()
     if not courses:
         await bot.send_message(message.chat.id, "Пока нет ни одного сохранённого курса.")
@@ -115,14 +146,22 @@ async def get_training_courses(message: types.Message):
 
 # Handler for "Преподаватели"
 async def get_support(message: types.Message):
+    if not sqlite_db.get_user_payment_status(message.from_user.id):
+        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+                       reply_markup=kb_start)
+        await message.delete()
+        return
     await sqlite_db.sql_read_from_teachers(message)
 
 # Handler for random message
 async def random_message(message: types.Message):
-    await bot.send_message(message.chat.id, 
-        f'Добро пожаловать обратно! Вы уже оплатили подписку.\n\n'
-        f'Пожалуйста воспользуйтесь клавиатурой, чтобы узнать больше о нашем центре.',
-        reply_markup=kb_client)
+    if not sqlite_db.get_user_payment_status(message.from_user.id):
+        await start_bot(message)
+    else:
+        await bot.send_message(message.chat.id,
+            f'Добро пожаловать обратно! Вы уже оплатили подписку.\n\n'
+            f'Пожалуйста воспользуйтесь клавиатурой, чтобы узнать больше о нашем центре.',
+            reply_markup=kb_client)
 
 # Register handlers
 def handlers_register(dp: Dispatcher):
