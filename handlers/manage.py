@@ -4,6 +4,9 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, MessageEntity
 from magic_filter import F
+from telegram._passport import data
+from telegram.ext import ContextTypes
+
 from create_bot import dp, bot, master_id
 from school_database import sqlite_db
 from keyboards import kb_manage
@@ -38,6 +41,9 @@ class FSMChannelUpdate(StatesGroup):
     choose_channel = State()
     choose_param   = State()
     input_value    = State()
+    choose_chapter = State()
+    send_video = State()
+    chapter_name = State()
 
 
 """Бот проверяет является ли пользователь хозяином бота.
@@ -169,9 +175,10 @@ async def process_channel_chosen(cb: types.CallbackQuery, state: FSMContext):
         InlineKeyboardButton("🖋 Название",      callback_data="upd_param_title"),
         InlineKeyboardButton("✍️ Описание",     callback_data="upd_param_description"),
         InlineKeyboardButton("📚 Тема",          callback_data="upd_param_topic"),
-        InlineKeyboardButton("📌 Pinned-текст", callback_data="upd_param_pinned"),
         InlineKeyboardButton("🚦 Навигационный текст", callback_data="upd_param_navigation"),
-        InlineKeyboardButton("❌ Удалить навигацию", callback_data="upd_param_nav_delete")
+        InlineKeyboardButton("❌ Удалить навигацию", callback_data="upd_param_nav_delete"),
+        InlineKeyboardButton("Добавить видео", callback_data="upd_param_video"),
+        InlineKeyboardButton("Добавить главу", callback_data="upd_param_chapter"),
     )
     await FSMChannelUpdate.next()  # -> choose_param
     await cb.message.edit_text("Шаг 2/3: Что нужно обновить?", reply_markup=kb)
@@ -182,16 +189,18 @@ async def process_channel_chosen(cb: types.CallbackQuery, state: FSMContext):
 async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
     param = cb.data.split("_")[-1]
     await state.update_data(param=param)
+    data = await state.get_data()
 
     prompts = {
         'title':       "Введите новое название канала:",
         'description': "Введите новое описание канала:",
         'topic':       "Введите новую тему канала:",
         'pinned':      "Введите новый текст закреплённого сообщения:",
-        'navigation': "Введите новый навигационный текст (Markdown HTML): \n"
+        'navigation': "Введите новый навигационный текст (Markdown HTML): \n",
+        'video': "Выберите главу для добавления видео",
+        'chapter': "Введите название для главы",
     }
     if param not in prompts:#если выбрали удалить
-        data = await state.get_data()
         ch_id = data['channel_id']
         rec = sqlite_db.get_channel_by_id(ch_id)
         if rec['nav_message_id'] is None:
@@ -204,10 +213,65 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
 
         await state.finish()
         return
+
+    if param == 'video':
+        kb = InlineKeyboardMarkup(row_width=2)
+        rec = sqlite_db.get_channel_by_id(data['channel_id'])
+        chapters = sqlite_db.get_chapter_by_channel_id(rec['channel_id'])   #returs a dictionary of chapters from chapters table which contains {channel_id|chapter_name|chapter_message_id} channel_id and chapter_name are unique pair
+                                                                            #contains {name: value, mesage_id: value}
+        for chapter, chapter_message_id in chapters.items():
+            kb.add(InlineKeyboardButton(text=chapter, callback_data=f"chapter_{chapter_message_id}"))
+        cb.message.answer(
+            text=prompts[param],
+            reply_markup=kb
+        )
+        await FSMChannelUpdate.choose_chapter
+        return
+
     else :
         await cb.message.answer(prompts[param])
         await FSMChannelUpdate.next()
         await cb.answer()
+
+@dp.callback_query_handler(lambda c: c.data.startswith("chapter_"), state=FSMChannelUpdate.choose_chapter)
+async def process_chapter_selection(cb: types.CallbackQuery, state: FSMContext):
+    chapter = cb.data.split("_")[-1]
+    await state.update_data(chapter=chapter)
+    cb.message.answer("Отправьте видео:")#user sends video and then we send it to a chennel and add to navigation
+    await FSMChannelUpdate.next()
+    await cb.answer()
+
+@dp.message_handler(state=FSMChannelUpdate.send_video)
+async def process_send_video(message: types.Message, state: FSMContext):
+    if message.content_type != ContextTypes.VIDEO:
+        message.answer("Please send a video file")
+        return
+    data = await state.get_data()
+    chapter = data['chapter']
+    rec = sqlite_db.get_channel_by_id(chapter['channel_id'])
+    kb = InlineKeyboardMarkup(row_width=2)
+    sent = bot.send_video(
+        chat_id=rec['channel_id'],
+        video_file=message.video,
+        parse_mode=types.ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+    if sent:
+        message.answer("Ваше видео было добавлено на канал")
+
+    videos = sqlite_db.add_material_to_chapter(chapter['name'], sent.message_id)   #adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
+                                                                                #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
+    for i, video in enumerate(videos, start=1):
+        kb.add(InlineKeyboardButton(text=str(i), url=video['message_id']))
+
+    await bot.edit_message_text(
+        chat_id=rec['channel_id'],
+        message_id=chapter['message_id'],
+        reply_markup=kb
+    )
+    message.answer("Ваше видео было добавлено в навигацию")
+    await state.finish()
+
 
 # Step 4) Receive the new value & apply
 @dp.message_handler(state=FSMChannelUpdate.input_value)
@@ -217,6 +281,12 @@ async def process_update_input(message: types.Message, state: FSMContext):
     param  = data['param']
     newval = message.text.strip()
     kb = InlineKeyboardMarkup(row_width=2)
+
+    if param == 'chapter':
+        await state.update_data(chapter=newval)
+        message.answer("Введите описание для главы")
+        await FSMChannelUpdate.chapter_name
+        return
 
     #if there is any hyperlinks add them to inline keyboard
 
@@ -235,7 +305,7 @@ async def process_update_input(message: types.Message, state: FSMContext):
         await message.reply(f"✅ Поле <b>{param}</b> обновлено!", parse_mode=types.ParseMode.HTML)
 
     # 4b) If it’s the pinned message text, edit in Telegram
-    else:  # param == 'pinned'
+    else:  # param == 'nav_message'
         # 1) get chat record from DB to know its Telegram chat_id
         rec = sqlite_db.get_channel_by_id(ch_id)
         chat_id = rec['channel_id']  # stored numeric ID or '@username'
@@ -266,12 +336,20 @@ async def process_update_input(message: types.Message, state: FSMContext):
                 )
                 sqlite_db.update_channel_field(ch_id, 'nav_message_id', pinned.message_id,)
                 await message.reply("✅ Текст закреплённого сообщения обновлён!")
-            except errors.MessageNotModified:
+            except Exception as e:
                 await bot.send_message("The message you have sent is exactly the same as the pinned message.")
 
 
     await state.finish()
 
+@dp.message_handler(state=FSMChannelUpdate.chapter_disc)
+async def process_chapter_name(message: types.Message, state: FSMContext):
+    discription = message.text.strip()
+    data = await state.get_data()
+    ch_id = data['channel_id']
+    chapter_name = data['chapter_name']
+    kb = InlineKeyboardMarkup(row_width=2)
+    return
 
 """Запуск FSM для внесения материалов
 """

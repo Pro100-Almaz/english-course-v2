@@ -67,6 +67,24 @@ def bot_tables_sql():
             )
             """
         )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chapters (
+                channel_id INTEGER NOT NULL,
+                chapter_name TEXT NOT NULL,
+                chapter_message_id INTEGER NOT NULL
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS materials (
+                chapter_name TEXT NOT NULL,
+                material_message_id INTEGER NOT NULL
+            )
+            """
+        )
+
 
         cur = conn.execute("SELECT COUNT(*) AS cnt FROM courses")
         if cur.fetchone()["cnt"] == 0:
@@ -260,4 +278,43 @@ def delete_support(user_id: int):
 def get_support():
     with get_connection() as conn:
         return {row['id']: row['user_id'] for row in conn.execute("SELECT id, user_id FROM support ORDER BY id")}
+    return None
+
+#chapters logic
+#
+#             CREATE TABLE IF NOT EXISTS chapters (
+#                 channel_id INTEGER NOT NULL,
+#                 chapter_name TEXT NOT NULL,
+#                 chapter_message_id INTEGER NOT NULL
+#             )
+#
+#             CREATE TABLE IF NOT EXISTS materials (
+#                 chapter_name TEXT NOT NULL,
+#                 material_message_id INTEGER NOT NULL
+#             )
+
+def get_chapter_by_channel_id(channel_id: int):
+    with get_connection() as conn:
+        return {row['chapter_name']: row['chapter_message_id'] for row in conn.execute("SELECT chapter_name, chapter_message_id FROM chapters WHERE channel_id = ?", (channel_id,))}
+    return None
+
+def add_chapter_by_channel_id(channel_id: int, message_id: int):
+    with get_connection() as conn:
+        cur = conn.execute("SELECT 1 FROM chapters WHERE channel_id = ? AND chapter_message_id = ?", (channel_id, message_id))
+        if cur.fetchone():
+            return {row['chapter_name']: row['chapter_message_id'] for row in conn.execute("SELECT chapter_name, chapter_message_id FROM chapters WHERE channel_id = ?", (channel_id,))}
+        conn.execute(
+            "INSERT INTO chapters (channel_id, chapter_message_id) VALUES (?, ?)",
+        )
+
+def add_material_to_chapter(chapter_name: str, message_id: int):
+    with get_connection() as conn:
+        cur = conn.execute("SELECT 1 FROM materials WHERE chapter_name = ? AND material_message_id = ?", (chapter_name, message_id))
+        if cur.fetchone():
+            return {materials for materials in conn.execute("SELECT material_message_id FROM materials WHERE chapter_name = ?", (chapter_name,))}
+        conn.execute(
+            "INSERT INTO materials (chapter_name, message_id) VALUES (?, ?)", (chapter_name, message_id)
+        )
+        conn.commit()
+        return {materials for materials in conn.execute("SELECT material_message_id FROM materials WHERE chapter_name = ?", (chapter_name,))}
     return None
