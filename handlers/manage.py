@@ -4,8 +4,6 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.filters import Text
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, MessageEntity
 from magic_filter import F
-from telegram._passport import data
-from telegram.ext import ContextTypes
 
 from create_bot import dp, bot, master_id
 from school_database import sqlite_db
@@ -243,7 +241,7 @@ async def process_chapter_selection(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state=FSMChannelUpdate.send_video)
 async def process_send_video(message: types.Message, state: FSMContext):
-    if message.content_type != ContextTypes.VIDEO:
+    if message.content_type != types.ContentTypes.VIDEO:
         message.answer("Please send a video file")
         return
     data = await state.get_data()
