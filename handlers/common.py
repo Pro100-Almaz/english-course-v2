@@ -9,6 +9,13 @@ async def clean_chat(message: types.Message):
          await message.delete()
          await bot.send_message(message.from_user.id, 'Бот Вас не понял, пожалуйста воспользуйтесь командами на клавиатуре')
          
-         
+
+async def delete_service_updates(message: types.Message):
+    try:
+        await bot.delete_message(message.chat.id, message.message_id)
+    except:
+        pass
+
 def register_common_handlers(dp: Dispatcher):
     dp.register_message_handler(clean_chat)
+    dp.register_message_handler(delete_service_updates,lambda m: m.pinned_message or m.new_chat_photo or m.left_chat_member, content_types=types.ContentType.ANY)

@@ -41,7 +41,7 @@ class FSMChannelUpdate(StatesGroup):
     input_value    = State()
     choose_chapter = State()
     send_video = State()
-    chapter_name = State()
+    chapter_disc = State()
 
 
 """Бот проверяет является ли пользователь хозяином бота.
@@ -219,11 +219,11 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
                                                                             #contains {name: value, mesage_id: value}
         for chapter, chapter_message_id in chapters.items():
             kb.add(InlineKeyboardButton(text=chapter, callback_data=f"chapter_{chapter_message_id}"))
-        cb.message.answer(
+        await cb.message.answer(
             text=prompts[param],
             reply_markup=kb
         )
-        await FSMChannelUpdate.choose_chapter
+        await FSMChannelUpdate.choose_chapter.set()
         return
 
     else :
@@ -235,39 +235,58 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
 async def process_chapter_selection(cb: types.CallbackQuery, state: FSMContext):
     chapter = cb.data.split("_")[-1]
     await state.update_data(chapter=chapter)
-    cb.message.answer("Отправьте видео:")#user sends video and then we send it to a chennel and add to navigation
-    await FSMChannelUpdate.next()
+    await cb.message.answer("Отправьте видео:")#user sends video and then we send it to a chennel and add to navigation
+    await FSMChannelUpdate.send_video.set()
     await cb.answer()
 
-@dp.message_handler(state=FSMChannelUpdate.send_video)
+@dp.message_handler(state=FSMChannelUpdate.send_video, content_types=types.ContentType.VIDEO)
 async def process_send_video(message: types.Message, state: FSMContext):
-    if message.content_type != types.ContentTypes.VIDEO:
-        message.answer("Please send a video file")
-        return
+    await message.answer("видео было принято")
     data = await state.get_data()
-    chapter = data['chapter']
-    rec = sqlite_db.get_channel_by_id(chapter['channel_id'])
+    chapter_id = data['chapter']
+    rec = sqlite_db.get_channel_by_id(int(data['channel_id']))
+    chapter = sqlite_db.get_chapter_from_channel_by_chapter_id(channel_id=rec['channel_id'], chapter_id=chapter_id)
+    if chapter is None :
+        message.answer("Такой главы нету на этом канале")
+        return
     kb = InlineKeyboardMarkup(row_width=2)
-    sent = bot.send_video(
-        chat_id=rec['channel_id'],
-        video_file=message.video,
-        parse_mode=types.ParseMode.HTML,
-        disable_web_page_preview=True
-    )
-    if sent:
-        message.answer("Ваше видео было добавлено на канал")
 
-    videos = sqlite_db.add_material_to_chapter(chapter['name'], sent.message_id)   #adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
-                                                                                #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
+    try:
+        sent = await bot.send_video(
+            chat_id=rec['channel_id'],
+            video=message.video.file_id,
+            parse_mode=types.ParseMode.HTML,
+        )
+        if sent:
+            await message.answer("Ваше видео было добавлено на канал")
+    except Exception as e:
+        await message.answer(f"Видео не отправилось на канал.\n причина:\n{e}")
+
+    videos = sqlite_db.add_material_to_chapter(
+        channel_id=rec['channel_id'],
+        chapter_name=chapter['chapter_name'],
+        message_id=sent.message_id)   #adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
+                                    #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
+
+    if videos is None :
+        message.answer("Не получилось взять список материалов из БД")
+    print(videos)
+
     for i, video in enumerate(videos, start=1):
-        kb.add(InlineKeyboardButton(text=str(i), url=video['message_id']))
+        url = f"https://t.me/c/{rec['channel_id'][4:]}/{video}"
+        kb.add(InlineKeyboardButton(text=str(i), url=url))
+    print("--------------")
+    print(kb)
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=rec['channel_id'],
+            message_id=int(chapter['chapter_message_id']),
+            reply_markup=kb
+        )
+        await message.answer("Ваше видео было добавлено в навигацию")
+    except Exception as e:
+        await message.answer(f"Не получилось обновить навигацию главы.\n Причина:\n{e}")
 
-    await bot.edit_message_text(
-        chat_id=rec['channel_id'],
-        message_id=chapter['message_id'],
-        reply_markup=kb
-    )
-    message.answer("Ваше видео было добавлено в навигацию")
     await state.finish()
 
 
@@ -281,9 +300,9 @@ async def process_update_input(message: types.Message, state: FSMContext):
     kb = InlineKeyboardMarkup(row_width=2)
 
     if param == 'chapter':
-        await state.update_data(chapter=newval)
-        message.answer("Введите описание для главы")
-        await FSMChannelUpdate.chapter_name
+        await state.update_data(chapter_name=newval) #save chapter name into state.data
+        await message.answer("Введите описание для главы:")
+        await FSMChannelUpdate.chapter_disc.set() #update state to recieve state discription
         return
 
     #if there is any hyperlinks add them to inline keyboard
@@ -345,9 +364,39 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
     discription = message.text.strip()
     data = await state.get_data()
     ch_id = data['channel_id']
+    rec = sqlite_db.get_channel_by_id(ch_id) #get channel info from database
     chapter_name = data['chapter_name']
-    kb = InlineKeyboardMarkup(row_width=2)
-    return
+    chat = await bot.get_chat(rec['channel_id'])
+    pinned = chat.pinned_message# info on the channel navigation message
+    # kb = InlineKeyboardMarkup(row_width=2)
+
+    sent = await bot.send_message( #send chapter navifation message and save the message
+        chat_id=ch_id,
+        text=chapter_name + "\n" + discription,
+        parse_mode = types.ParseMode.HTML,
+        disable_web_page_preview = True
+    )
+    await message.answer("Навигация главы отправлено в группу!")
+
+    sqlite_db.add_chapter_by_channel_id(int(rec['channel_id']), chapter_name, int(sent.message_id)) # save chapter information to database
+
+    await message.answer("Глава добавлена в базу данных!")
+
+    current_markup = pinned.reply_markup
+    url = f"https://t.me/c/{rec['channel_id'][4:]}/{sent.message_id}"
+    current_markup.add(InlineKeyboardButton(text=chapter_name, url=url))
+
+    try:
+        await bot.edit_message_reply_markup( # edit navigation message to add chapter buttons
+            chat_id=ch_id,
+            message_id=pinned.message_id,
+            reply_markup=current_markup
+        )
+        await message.answer("Глава добавлена в навигацию канала!")
+    except Exception as e:
+        await message.answer(f"Обновление закрепленного сообщение не удалось. \n ошибка: \n {e}")
+    await state.finish()
+
 
 """Запуск FSM для внесения материалов
 """
