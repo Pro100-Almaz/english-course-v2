@@ -329,6 +329,13 @@ async def process_update_input(message: types.Message, state: FSMContext):
         # 2) fetch the current pinned message
         chat    = await bot.get_chat(chat_id)
         pinned  = chat.pinned_message
+
+        chapters = sqlite_db.get_chapter_by_channel_id(int(chat_id))
+
+        for chapter_name, chapter_message_id in chapters.items():
+            url = f"https://t.me/c/{chat_id}/{chapter_message_id}"
+            kb.add(InlineKeyboardButton(text=chapter_name, url=url))
+
         if not pinned:
             # nothing pinned yet → send & pin
             sent = await bot.send_message(
