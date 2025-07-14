@@ -592,8 +592,8 @@ async def delete_channel_confirm(cb: types.CallbackQuery, state: FSMChannelDelet
     await state.update_data(channel_id=channel_id)
     await FSMChannelDelete.next()
     kb = InlineKeyboardMarkup(row_width = 1).add(
-        InlineKeyboardButton(text= "Да", data= 'ans_yes'),
-        InlineKeyboardButton(text= "Нет", data= 'ans_no')
+        InlineKeyboardButton(text= "Да", callback_data= 'ans_yes'),
+        InlineKeyboardButton(text= "Нет", callback_data= 'ans_no')
     )
     await cb.message.answer(text= f"Удалить канал {channel['name']}", reply_markup=kb)
 
@@ -627,7 +627,7 @@ async def view_channels(message: types.Message):
         courses = sqlite_db.load_courses_url()
 
         kb = InlineKeyboardMarkup(row_width=2)
-        for name, ch_id in channels.items():
+        for name, ch_id in courses.items():
             kb.add(
                 InlineKeyboardButton(
                     text=name,
