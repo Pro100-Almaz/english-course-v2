@@ -92,9 +92,9 @@ def bot_tables_sql():
             conn.executemany(
                 "INSERT INTO  courses (name, url, description) VALUES (?, ?, ?)",
                 [
-                    # ("Grammar Shots", "https://t.me/+0s5EUexRd0tmMTFi", "Здесь ты найдёшь короткие и понятные " #https://t.me/+T7i7THyfTRNhMmYy
-                    #                                                           "видеоуроки (10–15 минут), где я просто "
-                    #                                                           "объясняю сложные правила."),
+                    ("Grammar Shots", "https://t.me/+0s5EUexRd0tmMTFi", "Здесь ты найдёшь короткие и понятные " #https://t.me/+T7i7THyfTRNhMmYy
+                                                                              "видеоуроки (10–15 минут), где я просто "
+                                                                              "объясняю сложные правила."),
                     ("Daily Dose", "https://t.me/+2WlfIjQ55eFhZjJi", "Здесь мы делимся всем, что цепляет нас прямо "
                                                                       "сейчас: мысли, советы, фильмы, путешествия, "
                                                                       "события, лайфхаки."),

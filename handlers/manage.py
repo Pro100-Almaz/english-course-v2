@@ -219,6 +219,7 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
                                                                             #contains {name: value, mesage_id: value}
         for chapter, chapter_message_id in chapters.items():
             kb.add(InlineKeyboardButton(text=chapter, callback_data=f"chapter_{chapter_message_id}"))
+        kb.add(InlineKeyboardButton(text="Добавить отдельное видео", callback_data="chapter_unknown"))
         await cb.message.answer(
             text=prompts[param],
             reply_markup=kb
@@ -245,6 +246,21 @@ async def process_send_video(message: types.Message, state: FSMContext):
     data = await state.get_data()
     chapter_id = data['chapter']
     rec = sqlite_db.get_channel_by_id(int(data['channel_id']))
+
+    if chapter_id is "unknown":
+        try:
+            sent = await bot.send_video(
+                chat_id=rec['channel_id'],
+                video=message.video.file_id,
+                parse_mode=types.ParseMode.HTML,
+            )
+            if sent:
+                await message.answer("Ваше видео было добавлено на канал")
+        except Exception as e:
+            await message.answer(e)
+        return
+
+
     chapter = sqlite_db.get_chapter_from_channel_by_chapter_id(channel_id=rec['channel_id'], chapter_id=chapter_id)
     if chapter is None :
         message.answer("Такой главы нету на этом канале")
@@ -262,6 +278,8 @@ async def process_send_video(message: types.Message, state: FSMContext):
     except Exception as e:
         await message.answer(f"Видео не отправилось на канал.\n причина:\n{e}")
 
+
+    #updating database
     videos = sqlite_db.add_material_to_chapter(
         channel_id=rec['channel_id'],
         chapter_name=chapter['chapter_name'],
@@ -272,11 +290,11 @@ async def process_send_video(message: types.Message, state: FSMContext):
         message.answer("Не получилось взять список материалов из БД")
     print(videos)
 
+    #editing chapter navigation
     for i, video in enumerate(videos, start=1):
         url = f"https://t.me/c/{rec['channel_id'][4:]}/{video}"
         kb.add(InlineKeyboardButton(text=str(i), url=url))
-    print("--------------")
-    print(kb)
+
     try:
         await bot.edit_message_reply_markup(
             chat_id=rec['channel_id'],

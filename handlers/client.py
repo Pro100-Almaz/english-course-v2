@@ -1,6 +1,8 @@
 import html
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 from create_bot import bot, bot_address, dp
 from keyboards import kb_client, kb_start
 from school_database import sqlite_db
@@ -71,19 +73,19 @@ async def handle_payment(cb: types.CallbackQuery):
 
 async def get_main_channel(message: types.Message):
     if not sqlite_db.get_user_payment_status(message.from_user.id):
-        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+        await message.answer('К сожалению эта команда доступна только для подписчиков курса',
                        reply_markup=kb_start)
         await message.delete()
         return
 
     text = (
         'Вот наш основной канал с навигатором и с ежедневными новостями:\n'
-        f'<a href="https://t.me/+dMdXRs8TTa5lMzli">Ссылка на канал!</a>\n'
     )
 
     await bot.send_message(
         message.chat.id,
         text,
+        reply_markup= InlineKeyboardMarkup(row_width = 2).add(InlineKeyboardButton(text= "Ссылка на канал!!", url="https://t.me/+5_06M-kpB-ozMDRi")),
         parse_mode=types.ParseMode.HTML
     )
 
