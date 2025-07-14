@@ -341,3 +341,10 @@ def add_material_to_chapter(channel_id: int, chapter_name: str, message_id: int)
         return { row['material_message_id'] for row in conn.execute("SELECT material_message_id FROM materials WHERE  channel_id = ? AND chapter_name = ?",
                                                         (channel_id, chapter_name))}
     return None
+
+def delete_channel_by_id(channel_id: int):
+    with get_connection() as conn:
+        cur = conn.execute("SELECT 1 FROM users WHERE channel_id = ?", (channel_id,))
+        result = conn.execute("DELETE FROM courses WHERE channel_id = ?", (channel_id,))
+        conn.commit()
+        return result

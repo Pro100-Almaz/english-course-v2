@@ -43,6 +43,10 @@ class FSMChannelUpdate(StatesGroup):
     send_video = State()
     chapter_disc = State()
 
+class FSMChannelDelete(StatesGroup):
+    choose_channel = State()
+    confirmation = State()
+    delete_confirmed = State()
 
 """Бот проверяет является ли пользователь хозяином бота.
 Проверка ID_MASTER по ID на совпадение
@@ -566,14 +570,44 @@ async def inform_delete_callback_channels(callback_query: types.CallbackQuery):
     
 
 #@dp.message_handler(Text(equals='Удалить Канал', ignore_case=True))
-async def delete_channel_info(message: types.Message):
+async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
     if message.from_user.id == ID_MASTER:
-        info = await sqlite_db.choose_delete_channels()
-        for info_ch in info:
-            await bot.send_message(message.from_user.id, f'{info_ch[1]}\nID: {info_ch[0]}\nОписание: {info_ch[2]}')
-            await bot.send_message(message.from_user.id, text='Удалить канал?', reply_markup=InlineKeyboardMarkup().\
-                add(InlineKeyboardButton(f'delete {info_ch[0]}', callback_data=f'del_channel_{info_ch[0]}')))
+        info = sqlite_db.load_courses_url()
+        kb = InlineKeyboardMarkup(row_width=1)
+        for name, ch_id in info.items():
+            kb.add(
+                InlineKeyboardButton(
+                    text=name,
+                    callback_data=f"del_ch_{ch_id}"
+                )
+            )
+        await FSMchannelDelete.choose_channel.set()
 
+@dp.callback_query_handler(lambda c: c.data == "del_ch_", state=FSMChannelDelete.choose_channel)
+async def delete_channel_confirm(cb: types.CallbackQuery, state: FSMChannelDelete):
+    channel_id = cb.data.split("_")[-1]
+    channel = sqlite_db.get_channel_by_id(channel_id)
+    await state.update_data(channel_id=channel_id)
+    await FSMChannelDelete.next()
+    cb.answer(text=f"Удалить канал {channel.name}", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton(text= "Да", data= 'ans_yes'), InlineKeyboardButton(text= "Нет", data= 'ans_no')))
+
+@dp.callback_query_handler(lambda c: c.data.startswith("ans_"), state=FSMChannelDelete.confirmation)
+async def delete_channel_delete(cb: types.CallbackQuery, state: FSMChannelDelete):
+    confirm = cb.data.split("_")[-1]
+    if confirm == "no":
+        cb.answer(text="Удаление канала было отменено")
+        await state.finish()
+        return
+
+    data = state.get_data()
+    channel_id = data.get("channel_id")
+    result = sqlite_db.delete_channel_by_id(channel_id)
+    if result:
+        await cb.answer("Канал был удален")
+    else:
+        await cb.answer("Не получилось удалить канал")
+    await state.finish
+    return
 
 #@dp.message_handler(Text(equals='Просмотр Материалов', ignore_case=True))
 async def view_materials(message: types.Message):
@@ -584,7 +618,20 @@ async def view_materials(message: types.Message):
 #@dp.message_handler(Text(equals='Просмотр Каналов', ignore_case=True))
 async def view_channels(message: types.Message):
     if message.from_user.id == ID_MASTER:
-        await sqlite_db.sql_read_from_channels(message)
+        courses = sqlite_db.load_courses_url()
+
+        kb = InlineKeyboardMarkup(row_width=2)
+        for name, ch_id in channels.items():
+            kb.add(
+                InlineKeyboardButton(
+                    text=name,
+                    url = f"https://t.me/c/{ch_id[4:]}"
+                )
+            )
+        await message.answer(
+            text= "Cсылки нв курсы",
+            reply_markup=kb
+        )
 
 
 # Test message handler
@@ -642,7 +689,7 @@ def handlers_register_manage(dp: Dispatcher):
     dp.register_callback_query_handler(inform_delete_callback_channels, lambda c: c.data.startswith('del_channel_'))
     
     dp.register_message_handler(delete_channel_info, Text(equals='Удалить Канал', ignore_case=True))
-    dp.register_message_handler(view_materials, Text(equals='Просмотр Материалов', ignore_case=True))
-    dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
+    # dp.register_message_handler(view_materials, Text(equals='Просмотр Материалов', ignore_case=True))
+    # dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
     dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
 
