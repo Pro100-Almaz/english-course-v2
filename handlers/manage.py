@@ -612,7 +612,7 @@ async def delete_channel_delete(cb: types.CallbackQuery, state: FSMChannelDelete
         await cb.answer("Канал был удален")
     else:
         await cb.answer("Не получилось удалить канал")
-    await state.finish
+    await state.finish()
     return
 
 #@dp.message_handler(Text(equals='Просмотр Материалов', ignore_case=True))
