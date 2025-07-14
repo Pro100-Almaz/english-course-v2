@@ -582,6 +582,7 @@ async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
                     callback_data=f"del_ch_{ch_id}"
                 )
             )
+        await message.answer(text= "Выберите канал который хотите удалить", reply_markup=kb)
         await FSMChannelDelete.choose_channel.set()
         return
     return
