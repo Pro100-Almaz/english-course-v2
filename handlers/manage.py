@@ -263,7 +263,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
 
     chapter = sqlite_db.get_chapter_from_channel_by_chapter_id(channel_id=rec['channel_id'], chapter_id=chapter_id)
     if chapter is None :
-        message.answer("Такой главы нету на этом канале")
+        await message.answer("Такой главы нету на этом канале")
         return
     kb = InlineKeyboardMarkup(row_width=2)
 
@@ -287,7 +287,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
                                     #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
 
     if videos is None :
-        message.answer("Не получилось взять список материалов из БД")
+        await message.answer("Не получилось взять список материалов из БД")
     print(videos)
 
     #editing chapter navigation
