@@ -246,8 +246,8 @@ async def process_send_video(message: types.Message, state: FSMContext):
     data = await state.get_data()
     chapter_id = data['chapter']
     rec = sqlite_db.get_channel_by_id(int(data['channel_id']))
-
-    if chapter_id is "unknown":
+    print(chapter_id)
+    if chapter_id == "unknown":
         try:
             sent = await bot.send_video(
                 chat_id=rec['channel_id'],
