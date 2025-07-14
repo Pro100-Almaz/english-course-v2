@@ -572,6 +572,7 @@ async def inform_delete_callback_channels(callback_query: types.CallbackQuery):
 #@dp.message_handler(Text(equals='Удалить Канал', ignore_case=True))
 async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
     if message.from_user.id == ID_MASTER:
+        print("master entered the room")
         info = sqlite_db.load_courses_url()
         kb = InlineKeyboardMarkup(row_width=1)
         for name, ch_id in info.items():
@@ -582,6 +583,8 @@ async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
                 )
             )
         await FSMChannelDelete.choose_channel.set()
+        return
+    return
 
 @dp.callback_query_handler(lambda c: c.data == "del_ch_", state=FSMChannelDelete.choose_channel)
 async def delete_channel_confirm(cb: types.CallbackQuery, state: FSMChannelDelete):
