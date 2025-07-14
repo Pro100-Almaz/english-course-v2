@@ -15,7 +15,7 @@ from keyboards import kb_manage
 в мобильном телефоне.
 """
 
-ID_MASTER = int(master_id)
+ID_MASTER = master_id
 
 
 class FSMchannel(StatesGroup):
@@ -59,7 +59,7 @@ class FSMChannelDelete(StatesGroup):
 async def verify_owner(message: types.Message):
     id_check = message.from_user.id
     print(id_check)
-    if id_check == ID_MASTER:
+    if str(id_check) in ID_MASTER:
         await bot.send_message(message.from_user.id, 'Готов к работе, пожалуйста выбери команды на клавиатуре', reply_markup=kb_manage)
         
     else:
@@ -84,7 +84,7 @@ async def cancel_state(message: types.Message, state=FSMContext):
 """
 # Начало загрузки данных о канале
 async def add_channel(message: types.Message):
-    if message.from_user.id != ID_MASTER:
+    if str(message.from_user.id) not in ID_MASTER:
         return await message.reply("🚫 Доступ запрещён.")
 
     await FSMchannel.url.set()
@@ -94,7 +94,7 @@ async def add_channel(message: types.Message):
 
 
 async def load_channel_url(message: types.Message, state: FSMContext):
-    if message.from_user.id != ID_MASTER:
+    if str(message.from_user.id) not in ID_MASTER:
         return
     async with state.proxy() as data:
         data['url'] = message.text.strip()
@@ -105,7 +105,7 @@ async def load_channel_url(message: types.Message, state: FSMContext):
 
 
 async def load_channel_forward(message: types.Message, state: FSMContext):
-    if message.from_user.id != ID_MASTER:
+    if str(message.from_user.id) not in ID_MASTER:
         return
 
     if not message.forward_from_chat or message.forward_from_chat.type != 'channel':
@@ -147,7 +147,7 @@ async def load_channel_topic(message: types.Message, state: FSMContext):
 """Запуск FSM для обновления информации о каналах
 """
 async def update_channel(message: types.Message):
-    if message.from_user.id != ID_MASTER:
+    if str(message.from_user.id) not in ID_MASTER:
         return await message.reply("🚫 Доступ запрещён.")
 
     channels = sqlite_db.load_courses_url()
@@ -433,7 +433,7 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
 # Начало загрузки данных о материале
 async def add_material(message: types.Message):
     print(f"add_material called by user {message.from_user.id}")  # Debug print
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         try:
             # Получаем список каналов для выбора
             channels = await sqlite_db.get_channels_for_materials()
@@ -473,7 +473,7 @@ async def test_callback_decorator(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data.startswith('select_channel_'))
 async def process_channel_selection_decorator(callback_query: types.CallbackQuery, state=FSMContext):
     print(f"Decorator channel selection callback received: {callback_query.data}")
-    if callback_query.from_user.id == ID_MASTER:
+    if str(callback_query.from_user.id) in ID_MASTER:
         try:
             channel_id = callback_query.data.replace('select_channel_', '')
             print(f"Selected channel_id: {channel_id}")
@@ -493,7 +493,7 @@ async def process_channel_selection_decorator(callback_query: types.CallbackQuer
 
 # Бот ловит ответ и пишет в словарь название материала
 async def load_material_title(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         async with state.proxy() as data_material:
             data_material['title'] = message.text
         await FSMmaterial.next()
@@ -502,7 +502,7 @@ async def load_material_title(message: types.Message, state=FSMContext):
 
 # Бот ловит ответ и пишет в словарь тип контента
 async def load_content_type(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         content_types = {
             '1': 'text',
             '2': 'photo', 
@@ -524,7 +524,7 @@ async def load_content_type(message: types.Message, state=FSMContext):
 
 # Бот ловит контент и сохраняет в словарь
 async def load_content(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         async with state.proxy() as data_material:
             if message.content_type == 'text':
                 data_material['content'] = message.text
@@ -551,7 +551,7 @@ async def load_content(message: types.Message, state=FSMContext):
 
 # Бот ловит ссылку на обсуждение и сохраняет материал
 async def load_discussion_link(message: types.Message, state=FSMContext):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         async with state.proxy() as data_material:
             data_material['discussion_link'] = message.text
 
@@ -571,7 +571,7 @@ async def inform_delete_callback_channels(callback_query: types.CallbackQuery):
 
 #@dp.message_handler(Text(equals='Удалить Канал', ignore_case=True))
 async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         print("master entered the room")
         info = sqlite_db.load_courses_url()
         kb = InlineKeyboardMarkup(row_width=1)
@@ -617,13 +617,13 @@ async def delete_channel_delete(cb: types.CallbackQuery, state: FSMChannelDelete
 
 #@dp.message_handler(Text(equals='Просмотр Материалов', ignore_case=True))
 async def view_materials(message: types.Message):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         await sqlite_db.sql_read_materials(message)
 
 
 #@dp.message_handler(Text(equals='Просмотр Каналов', ignore_case=True))
 async def view_channels(message: types.Message):
-    if message.from_user.id == ID_MASTER:
+    if str(message.from_user.id) in ID_MASTER:
         courses = sqlite_db.load_courses_url()
 
         kb = InlineKeyboardMarkup(row_width=2)

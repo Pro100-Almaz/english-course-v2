@@ -15,7 +15,7 @@ dp = Dispatcher(bot, storage=storage)
 
 bot_address = os.getenv('BOT_NAME')
 
-master_id = os.getenv('OWNER_NAME')
+master_id = os.getenv('OWNER_NAME').split(',')
 
 client_commands = ['/start', '/help', 'Преподаватели', 'Тренировки', 'Режим работы',\
                    'Контакты', '/moderate', '/buy', '/ping']
