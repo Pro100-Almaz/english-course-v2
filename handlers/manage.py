@@ -605,7 +605,7 @@ async def delete_channel_delete(cb: types.CallbackQuery, state: FSMChannelDelete
         await state.finish()
         return
 
-    data = state.get_data()
+    data = await state.get_data()
     channel_id = data.get("channel_id")
     result = sqlite_db.delete_channel_by_id(channel_id)
     if result:
