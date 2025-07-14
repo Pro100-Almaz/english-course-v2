@@ -375,7 +375,7 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
     chapter_name = data['chapter_name']
     chat = await bot.get_chat(rec['channel_id'])
     pinned = chat.pinned_message# info on the channel navigation message
-    # kb = InlineKeyboardMarkup(row_width=2)
+    kb = InlineKeyboardMarkup(row_width=2)
 
     sent = await bot.send_message( #send chapter navifation message and save the message
         chat_id=ch_id,
@@ -385,19 +385,20 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
     )
     await message.answer("Навигация главы отправлено в группу!")
 
-    sqlite_db.add_chapter_by_channel_id(int(rec['channel_id']), chapter_name, int(sent.message_id)) # save chapter information to database
+    chapters = sqlite_db.add_chapter_by_channel_id(int(rec['channel_id']), chapter_name, int(sent.message_id)) # save chapter information to database
 
     await message.answer("Глава добавлена в базу данных!")
 
-    current_markup = pinned.reply_markup
-    url = f"https://t.me/c/{rec['channel_id'][4:]}/{sent.message_id}"
-    current_markup.add(InlineKeyboardButton(text=chapter_name, url=url))
+
+    for chapter_name, chapter_message_id in chapters.items():
+        url = f"https://t.me/c/{rec['channel_id'][4:]}/{chapter_message_id}"
+        kb.add(InlineKeyboardButton(text=chapter_name, url=url))
 
     try:
         await bot.edit_message_reply_markup( # edit navigation message to add chapter buttons
             chat_id=ch_id,
             message_id=pinned.message_id,
-            reply_markup=current_markup
+            reply_markup=kb
         )
         await message.answer("Глава добавлена в навигацию канала!")
     except Exception as e:
