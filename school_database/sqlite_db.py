@@ -113,6 +113,7 @@ def bot_tables_sql():
 def load_courses_url():
     with get_connection() as conn:
         cur = conn.cursor()
+        print("courses are loading")
         cur.execute("SELECT name, channel_id FROM courses ORDER BY id")
         return { row["name"]: row["channel_id"] for row in cur.fetchall() }
 
