@@ -584,10 +584,8 @@ async def delete_channel_info(message: types.Message, state: FSMChannelDelete):
             )
         await message.answer(text= "Выберите канал который хотите удалить", reply_markup=kb)
         await FSMChannelDelete.choose_channel.set()
-        return
-    return
 
-@dp.callback_query_handler(lambda c: c.data == "del_ch_", state=FSMChannelDelete.choose_channel)
+@dp.callback_query_handler(lambda c: c.data.startswith("del_ch_"), state=FSMChannelDelete.choose_channel)
 async def delete_channel_confirm(cb: types.CallbackQuery, state: FSMChannelDelete):
     channel_id = cb.data.split("_")[-1]
     channel = sqlite_db.get_channel_by_id(channel_id)
