@@ -663,18 +663,21 @@ async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
     chat_id = int(cb.data.split("_")[-1])
     message = cb.message
     # Only allow admins to call this
-    member = await bot.get_chat_member(chat_id, message.from_user.id)
-    if member.status not in ("administrator", "creator"):
-        return await message.reply("❌ You must be an admin to generate invite links.")
-
+    try:
+        member = await bot.get_chat_member(chat_id, message.from_user.id)
+        if member.status not in ("administrator", "creator"):
+            return await message.reply("❌ You must be an admin to generate invite links.")
+    except Exception as e:
+        await message.reply(e)
+        return
     # Create a new invite link (optional: set expiry_date or member_limit)
     new_link: types.ChatInviteLink = await bot.create_chat_invite_link(
         chat_id=chat_id,
         expire_date=None,     # Unix timestamp or None
         member_limit=None     # Max number of uses or None
     )
-    sqlite_db.update_channel_field(channel_id=chat_id, field='url', value=new_link.invite_link)
-    kb = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton(text=cah))
+    channel = sqlite_db.update_channel_field(channel_id=chat_id, field='url', value=new_link.invite_link)
+    kb = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton(text= channel['url'], url= channel['url']))
     await message.reply(f"✅ Here’s your new invite link:\n{new_link.invite_link} \n link updated")
     await state.finish()
 

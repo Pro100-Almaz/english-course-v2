@@ -153,6 +153,7 @@ def update_channel_field(channel_id: str | int, field: str, value):
             (value, str(channel_id))
         )
         conn.commit()
+        return conn.execute("SELECT * FROM courses WHERE channel_id = ?", (str(channel_id),)).fetchone()
 
 async def sql_add_commands_channels(state: FSMContext):
     """Сохраняет новый канал в таблице courses на основе данных FSMContext"""
