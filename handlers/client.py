@@ -39,13 +39,15 @@ async def start_bot(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data.startswith('client_start_'))
 async def handle_payment(cb: types.CallbackQuery):
     param = cb.data.split('_')[-1]
-    user_id = cb.message.from_user.id
+    user_id = cb.message.chat.id
+        # (cb.message.from_user.id)
+    print(user_id)
     message = cb.message
     if param == 'payment':
         await message.answer(f'💳 Подписка на 1 месяц — 8000 тг \n'
                        f'Можете оплатить по ссылке внизу👇\n'
                        f'После оплаты обязательно отправьте чек об оплате, чтобы мы активировали доступ.')
-        await payment_handler(message) #оформить подписку и изменить статус подписки в бд
+        await payment_handler(message, user_id) #оформить подписку и изменить статус подписки в бд
 
     if param == 'info':
         await message.answer('Вот что тебя ждёт:\n\n'
@@ -153,6 +155,8 @@ async def get_support(message: types.Message):
                        reply_markup=kb_start)
         await message.delete()
         return
+    await bot.send_message("Если у вас еще остались вопросы то можете написать по следующему телеграм хэнлу\n"
+                             "Sandugash - @Sakokas")
     await sqlite_db.sql_read_from_teachers(message)
 
 # Handler for random message

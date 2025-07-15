@@ -29,8 +29,8 @@ class PaymentState(StatesGroup):
 
 
 # 1) /buy command: send the invoice
-async def payment_handler(message: types.Message):
-    await successful_payment(message)
+async def payment_handler(message: types.Message, user_id):
+    await successful_payment(message, int(user_id))
     # if not PROVIDER_TOKEN:
     #     await bot.send_message(message.chat.id, "Ошибка: токен платежной системы не настроен. Обратитесь к администратору.")
     #     return
@@ -70,9 +70,8 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 
 
 # successful payment
-async def successful_payment(message: types.Message):
+async def successful_payment(message: types.Message, user_id: int):
     try:
-        user_id = int(message.from_user.id)
         # logging.info(f"SUCCESSFUL PAYMENT for user {user_id}")
         
         payment_info = message.successful_payment
