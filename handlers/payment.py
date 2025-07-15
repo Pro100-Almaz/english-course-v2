@@ -78,7 +78,7 @@ async def successful_payment(message: types.Message):
         payment_info = message.successful_payment
         # logging.info(f"Payment details: {payment_info}")
         
-        success = update_user_payment_status(user_id)
+        success = db.update_user_payment_status(user_id)
         
         if success:
             # Import keyboard here to avoid circular imports
@@ -132,32 +132,6 @@ async def refund_payment(message: types.Message):
 
 
 # Helper function to update user payment status
-def update_user_payment_status(user_id: int) -> bool:
-    try:
-        logging.info(f"Starting payment status update for user {user_id}")
-        
-        with db.get_connection() as conn:
-            cur = conn.cursor()
-
-            logging.info(f"Updating existing user {user_id} payment status to TRUE")
-            cur.execute(
-                "UPDATE users SET payment_status = TRUE WHERE user_id = ?",
-                (user_id,)
-            )
-            
-            # Also add to payments table for record keeping
-            logging.info(f"Adding payment record for user {user_id}")
-            cur.execute(
-                "INSERT OR IGNORE INTO payments (user_id) VALUES (?)",
-                (user_id,)
-            )
-            
-            conn.commit()
-            logging.info(f"Payment status updated successfully for user {user_id}")
-            return True
-    except Exception as e:
-        logging.error(f"Error updating payment status for user {user_id}: {e}")
-        return False
 
 
 # Test command to check payment status

@@ -353,3 +353,14 @@ def delete_channel_by_id(channel_id: int):
             conn.commit()
             return result
         else: return False
+
+
+def update_user_payment_status(user_id: int):
+    with (get_connection() as conn):
+        cur = conn.execute("SELECT 1 FROM users WHERE user_id = ?", (user_id,))
+        if cur.fetchone():
+            result = conn.execute("UPDATE users SET payment_status = ? WHERE user_id = ?",
+                                  (True, user_id))
+            conn.commit()
+            return result
+        return None
