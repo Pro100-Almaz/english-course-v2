@@ -304,6 +304,8 @@ async def process_send_video(message: types.Message, state: FSMContext):
 
     #editing chapter navigation
     for video_id, video_name in videos.items():
+        if video_name is None:
+            continue
         url = f"https://t.me/c/{rec['channel_id'][4:]}/{video_id}"
         kb.add(InlineKeyboardButton(text=video_name, url=url))
     print(kb)
