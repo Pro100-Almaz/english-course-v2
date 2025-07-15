@@ -134,3 +134,4 @@ dmypy.json
 .env
 test.py
 .db
+school_database/bot_sql.db
