@@ -654,6 +654,8 @@ async def link_update_channel_choose(message: types.Message, state: FSMLinkUpd):
     kb = InlineKeyboardMarkup(row_width=2)
     for name, ch_id in channels.items():
         kb.add(InlineKeyboardButton(text=name, callback_data=f"link_ch_{ch_id}"))
+
+    await message.reply(text='Выберите канал для обновления ссылки', reply_markup=kb)
     await FSMLinkUpd.choose_channel.set()
 
 @dp.callback_query_handler(lambda c: c.data.startswith("link_ch_"), state=FSMLinkUpd.choose_channel)
