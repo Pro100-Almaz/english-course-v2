@@ -48,6 +48,9 @@ class FSMChannelDelete(StatesGroup):
     confirmation = State()
     delete_confirmed = State()
 
+class FSMLinkUpd(StatesGroup):
+    choose_channel = State()
+
 """Бот проверяет является ли пользователь хозяином бота.
 Проверка ID_MASTER по ID на совпадение
 В целях безопасности необходимо установить запрет на добавление Бота в другие группы!
@@ -644,6 +647,38 @@ async def view_channels(message: types.Message):
 async def test_message(message: types.Message):
     print(f"Test message received: {message.text}")
     await message.reply("Test message received!")
+
+@dp.message_handler(commands=["new_invite"])
+async def link_update_channel_choose(message: types.Message, state: FSMLinkUpd):
+    channels = sqlite_db.load_courses_url()
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name, ch_id in channels.items():
+        kb.add(InlineKeyboardButton(text=name, callback_data=f"link_ch_{ch_id}"))
+    await FSMLinkUpd.choose_channel.set()
+
+@dp.callback_query_handler(lambda c: c.data.startswith("link_ch_"), state=FSMLinkUpd.choose_channel)
+async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
+    chat_id = int(cb.data.split("_")[-1])
+
+    # Only allow admins to call this
+    member = await bot.get_chat_member(chat_id, message.from_user.id)
+    if member.status not in ("administrator", "creator"):
+        return await message.reply("❌ You must be an admin to generate invite links.")
+
+    # Create a new invite link (optional: set expiry_date or member_limit)
+    new_link: types.ChatInviteLink = await bot.create_chat_invite_link(
+        chat_id=chat_id,
+        expire_date=None,     # Unix timestamp or None
+        member_limit=None     # Max number of uses or None
+    )
+    sqlite_db.update_channel_field(channel_id=chat_id, field='url', value=new_link.invite_link)
+    kb = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton(text=cah))
+    await message.reply(f"✅ Here’s your new invite link:\n{new_link.invite_link} \n link updated")
+    await state.finish()
+
+# —————— Runner ——————
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
 
 
 """Регистрируем хендлеры
