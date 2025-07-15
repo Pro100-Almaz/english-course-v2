@@ -648,7 +648,7 @@ async def test_message(message: types.Message):
     print(f"Test message received: {message.text}")
     await message.reply("Test message received!")
 
-@dp.message_handler(commands=["new_invite"])
+# @dp.message_handler(commands=["new_invite"])
 async def link_update_channel_choose(message: types.Message, state: FSMLinkUpd):
     channels = sqlite_db.load_courses_url()
     kb = InlineKeyboardMarkup(row_width=2)
@@ -733,4 +733,4 @@ def handlers_register_manage(dp: Dispatcher):
     # dp.register_message_handler(view_materials, Text(equals='Просмотр Материалов', ignore_case=True))
     dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
     dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
-
+    dp.register_message_handler(link_update_channel_choose, Text(equals='Обновить ссылку', ignore_case=True))
