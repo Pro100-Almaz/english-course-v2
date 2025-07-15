@@ -249,6 +249,9 @@ async def process_chapter_selection(cb: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state=FSMChannelUpdate.send_video, content_types=types.ContentType.VIDEO)
 async def process_send_video(message: types.Message, state: FSMContext):
+    if message.caption is None:
+        await message.answer("Видео не было принято\n Пожалуйста отправьте видео с подписью")
+        return
     await message.answer("видео было принято")
     data = await state.get_data()
     chapter_id = data['chapter']
@@ -258,7 +261,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
         try:
             sent = await bot.send_video(
                 chat_id=rec['channel_id'],
-                text=message.text.strip(),
+                text=message.caption.strip(),
                 video=message.video.file_id,
                 parse_mode=types.ParseMode.HTML,
             )

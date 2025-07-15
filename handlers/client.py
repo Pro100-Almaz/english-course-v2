@@ -92,7 +92,7 @@ async def get_main_channel(message: types.Message):
 
 async def get_courses(message: types.Message):
     if not sqlite_db.get_user_payment_status(message.from_user.id):
-        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+        await message.answer('К сожалению эта команда доступна только для подписчиков курса',
                        reply_markup=kb_start)
         await message.delete()
         return
@@ -149,7 +149,7 @@ async def get_training_courses(message: types.Message):
 # Handler for "Преподаватели"
 async def get_support(message: types.Message):
     if not sqlite_db.get_user_payment_status(message.from_user.id):
-        message.answer('К сожалению эта команда доступна только для подписчиков курса',
+        await message.answer('К сожалению эта команда доступна только для подписчиков курса',
                        reply_markup=kb_start)
         await message.delete()
         return
