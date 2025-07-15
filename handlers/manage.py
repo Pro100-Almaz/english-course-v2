@@ -243,7 +243,7 @@ async def process_param_chosen(cb: types.CallbackQuery, state: FSMContext):
 async def process_chapter_selection(cb: types.CallbackQuery, state: FSMContext):
     chapter = cb.data.split("_")[-1]
     await state.update_data(chapter=chapter)
-    await cb.message.answer("Отправьте видео:")#user sends video and then we send it to a chennel and add to navigation
+    await cb.message.answer("Отправьте видео и напишите название в описаний к видео:")#user sends video and then we send it to a chennel and add to navigation
     await FSMChannelUpdate.send_video.set()
     await cb.answer()
 
@@ -258,6 +258,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
         try:
             sent = await bot.send_video(
                 chat_id=rec['channel_id'],
+                text=message.text.strip(),
                 video=message.video.file_id,
                 parse_mode=types.ParseMode.HTML,
             )
@@ -277,6 +278,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
     try:
         sent = await bot.send_video(
             chat_id=rec['channel_id'],
+            text=message.text.strip(),
             video=message.video.file_id,
             parse_mode=types.ParseMode.HTML,
         )
@@ -284,13 +286,16 @@ async def process_send_video(message: types.Message, state: FSMContext):
             await message.answer("Ваше видео было добавлено на канал")
     except Exception as e:
         await message.answer(f"Видео не отправилось на канал.\n причина:\n{e}")
+        return
 
 
-    #updating database
+    #updating database")
     videos = sqlite_db.add_material_to_chapter(
         channel_id=rec['channel_id'],
         chapter_name=chapter['chapter_name'],
-        message_id=sent.message_id)   #adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
+        message_id=sent.message_id,
+        name=sent.message.text
+    )#adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
                                     #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
 
     if videos is None :
@@ -298,9 +303,9 @@ async def process_send_video(message: types.Message, state: FSMContext):
     print(videos)
 
     #editing chapter navigation
-    for i, video in enumerate(videos, start=1):
-        url = f"https://t.me/c/{rec['channel_id'][4:]}/{video}"
-        kb.add(InlineKeyboardButton(text=str(i), url=url))
+    for video_id, video_name in videos.items():
+        url = f"https://t.me/c/{rec['channel_id'][4:]}/{video_id}"
+        kb.add(InlineKeyboardButton(text=video_name, url=url))
 
     try:
         await bot.edit_message_reply_markup(

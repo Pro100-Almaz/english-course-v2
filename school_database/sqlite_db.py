@@ -81,7 +81,8 @@ def bot_tables_sql():
             CREATE TABLE IF NOT EXISTS materials (
                 channel_id INTEGER NOT NULL,
                 chapter_name TEXT NOT NULL,
-                material_message_id INTEGER NOT NULL
+                material_message_id INTEGER NOT NULL,
+                material_name TEXT
             )
             """
         )
@@ -328,7 +329,7 @@ def add_chapter_by_channel_id(channel_id: int, chapter_name: str, message_id: in
         return {row['chapter_name']: row['chapter_message_id'] for row in conn.execute("SELECT chapter_name, chapter_message_id FROM chapters WHERE channel_id = ?", (channel_id,))}
 
 
-def add_material_to_chapter(channel_id: int, chapter_name: str, message_id: int):
+def add_material_to_chapter(channel_id: int, chapter_name: str, message_id: int, name: str):
     with get_connection() as conn:
         cur = conn.execute("SELECT 1 FROM materials WHERE channel_id = ? AND chapter_name = ? AND material_message_id = ?",
                            (chapter_name, message_id, channel_id))
@@ -336,11 +337,11 @@ def add_material_to_chapter(channel_id: int, chapter_name: str, message_id: int)
             return {'message_id': row['material_message_id'] for row in conn.execute("SELECT material_message_id FROM materials WHERE  channel_id = ? AND chapter_name = ?",
                                                             (channel_id, chapter_name,))}
         conn.execute(
-            "INSERT INTO materials (channel_id, chapter_name, material_message_id) VALUES (?, ?, ?)",
-            (channel_id, chapter_name, message_id)
+            "INSERT INTO materials (channel_id, chapter_name, material_message_id, material_name) VALUES (?, ?, ?, ?)",
+            (channel_id, chapter_name, message_id, name)
         )
         conn.commit()
-        return { row['material_message_id'] for row in conn.execute("SELECT material_message_id FROM materials WHERE  channel_id = ? AND chapter_name = ?",
+        return { row['material_message_id']: row['material_name'] for row in conn.execute("SELECT material_message_id, material_name FROM materials WHERE  channel_id = ? AND chapter_name = ?",
                                                         (channel_id, chapter_name))}
     return None
 
