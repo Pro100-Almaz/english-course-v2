@@ -352,4 +352,4 @@ def delete_channel_by_id(channel_id: int):
             result = conn.execute("DELETE FROM courses WHERE channel_id = ?", (channel_id,))
             conn.commit()
             return result
-        else: return false
+        else: return False

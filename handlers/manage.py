@@ -294,7 +294,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
         channel_id=rec['channel_id'],
         chapter_name=chapter['chapter_name'],
         message_id=sent.message_id,
-        name=sent.text
+        name=message.caption.strip()
     )#adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
                                     #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
 
