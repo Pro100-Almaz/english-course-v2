@@ -1,14 +1,20 @@
 import html
+import os
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputFile, ReplyKeyboardRemove
 
 from create_bot import bot, bot_address, dp
 from keyboards import kb_client, kb_start
 from school_database import sqlite_db
-from handlers.payment import payment_handler, successful_payment
+from handlers.payment import payment_handler, successful_payment, cancel_handler
 from school_database.sqlite_db import get_support
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# поднимемся на одну папку вверх (из папка/ → центр/)
+ROOT_DIR = os.path.dirname(BASE_DIR)
+# дальше спускаемся в материалы
+file_path = os.path.join(ROOT_DIR, 'legal', 'dafinkers.pdf')
 
 # Handler for /start and /help
 async def start_bot(message: types.Message):
@@ -71,6 +77,18 @@ async def handle_payment(cb: types.CallbackQuery):
         await message.answer('Если у вас еще остались вопросы то можете написать по следующему телеграм хэнлу\n'
                              'Sandugash - @Sakokas',
                              reply_markup=kb_start)
+    if param == 'oferta':
+        if not os.path.exists(file_path):
+            await message.answer("Мы не можем найти оферту")
+            return
+
+        document = InputFile(file_path)
+        await bot.send_document(
+            chat_id=message.chat.id,
+            document=document,
+            caption= "Публичная Оферта"
+        )
+        await message.answer("Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг", reply_markup=kb_start)
 
 
 async def get_main_channel(message: types.Message):
@@ -159,6 +177,17 @@ async def get_support(message: types.Message):
                              "Sandugash - @Sakokas")
     await sqlite_db.sql_read_from_teachers(message)
 
+async def cancel_sub(message: types.Message):
+    if not sqlite_db.get_user_payment_status(message.from_user.id):
+        await random_message(message)
+        return
+    await message.answer(text="Нам жаль что ты покидаешь наше сообщество так скоро, надеемся увидеть тебя снова", reply_markup=ReplyKeyboardRemove())
+    result = await cancel_handler(message.chat.id)
+    if result:
+        await message.answer(text="Ваша подписка была успешно отменена", reply_markup=kb_start)
+    else:
+        await message.answer("При отмене подписки произошла ошибка пожалуйста обратитесь к администратору")
+
 # Handler for random message
 async def random_message(message: types.Message):
     if not sqlite_db.get_user_payment_status(message.from_user.id):
@@ -169,6 +198,8 @@ async def random_message(message: types.Message):
             f'Пожалуйста воспользуйтесь клавиатурой, чтобы узнать больше о нашем центре.',
             reply_markup=kb_client)
 
+
+
 # Register handlers
 def handlers_register(dp: Dispatcher):
     print('✅ Регистрируем хендлеры клиента')
@@ -178,4 +209,5 @@ def handlers_register(dp: Dispatcher):
     dp.register_message_handler(get_contacts, Text(equals='Контакты', ignore_case=True))
     dp.register_message_handler(get_work_hours, Text(equals='Режим работы', ignore_case=True))
     dp.register_message_handler(get_support, Text(equals='Служба поддержки', ignore_case=True))
+    dp.register_message_handler(cancel_sub, Text(equals='Отменить подписку', ignore_case=True))
     dp.register_message_handler(random_message)

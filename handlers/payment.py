@@ -28,6 +28,9 @@ class PaymentState(StatesGroup):
     awaiting_payment = State()
 
 
+async def cancel_handler(user_id: int):
+    return db.update_user_payment_status(user_id, False)
+
 # 1) /buy command: send the invoice
 async def payment_handler(message: types.Message, user_id):
     await successful_payment(message, int(user_id))
@@ -77,7 +80,7 @@ async def successful_payment(message: types.Message, user_id: int):
         payment_info = message.successful_payment
         # logging.info(f"Payment details: {payment_info}")
         
-        success = db.update_user_payment_status(user_id)
+        success = db.update_user_payment_status(user_id, True)
         
         if success:
             # Import keyboard here to avoid circular imports
