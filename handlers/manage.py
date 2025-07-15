@@ -678,7 +678,7 @@ async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
     )
     channel = sqlite_db.update_channel_field(channel_id=chat_id, field='url', value=new_link.invite_link)
     kb = InlineKeyboardMarkup(row_width=2).add(InlineKeyboardButton(text= channel['url'], url= channel['url']))
-    await message.reply(f"✅ Here’s your new invite link:\n{new_link.invite_link} \n link updated")
+    await message.reply(text = f"✅ Here’s your new invite link: \n link updated", reply_markup=kb)
     await state.finish()
 
 # —————— Runner ——————
