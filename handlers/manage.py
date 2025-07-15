@@ -664,6 +664,7 @@ async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
     message = cb.message
     # Only allow admins to call this
     try:
+        print(chat_id)
         member = await bot.get_chat_member(chat_id, message.from_user.id)
         if member.status not in ("administrator", "creator"):
             return await message.reply("❌ You must be an admin to generate invite links.")

@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from create_bot import bot, bot_address, dp
 from keyboards import kb_client, kb_start
 from school_database import sqlite_db
-from handlers.payment import payment_handler
+from handlers.payment import payment_handler, successful_payment
 from school_database.sqlite_db import get_support
 
 

@@ -30,33 +30,34 @@ class PaymentState(StatesGroup):
 
 # 1) /buy command: send the invoice
 async def payment_handler(message: types.Message):
-    if not PROVIDER_TOKEN:
-        await bot.send_message(message.chat.id, "Ошибка: токен платежной системы не настроен. Обратитесь к администратору.")
-        return
-
-    try:
-        if PROVIDER_TOKEN.split(':')[1] == 'TEST':
-            await bot.send_message(message.chat.id, "🧪 Тестовый платеж! Используйте тестовые данные карты.")
-
-        await bot.send_invoice(
-            message.chat.id,
-            title="Подписка на бота",
-            description="Активация подписки на бота на 1 месяц",
-            provider_token=PROVIDER_TOKEN,
-            currency=CURRENCY,
-            photo_url="https://www.aroged.com/wp-content/uploads/2022/06/Telegram-has-a-premium-subscription.jpg",
-            photo_width=416,
-            photo_height=234,
-            photo_size=416,
-            is_flexible=False,
-            prices=[PRICE],
-            start_parameter="one-month-subscription",
-            payload="test-invoice-payload"
-        )
-    except Exception as e:
-        logging.error(f"Error sending invoice: {e}")
-        await bot.send_message(message.chat.id, "Ошибка при создании платежа. Попробуйте позже.")
-
+    await successful_payment(message)
+    # if not PROVIDER_TOKEN:
+    #     await bot.send_message(message.chat.id, "Ошибка: токен платежной системы не настроен. Обратитесь к администратору.")
+    #     return
+    #
+    # try:
+    #     if PROVIDER_TOKEN.split(':')[1] == 'TEST':
+    #         await bot.send_message(message.chat.id, "🧪 Тестовый платеж! Используйте тестовые данные карты.")
+    #
+    #     await bot.send_invoice(
+    #         message.chat.id,
+    #         title="Подписка на бота",
+    #         description="Активация подписки на бота на 1 месяц",
+    #         provider_token=PROVIDER_TOKEN,
+    #         currency=CURRENCY,
+    #         photo_url="https://www.aroged.com/wp-content/uploads/2022/06/Telegram-has-a-premium-subscription.jpg",
+    #         photo_width=416,
+    #         photo_height=234,
+    #         photo_size=416,
+    #         is_flexible=False,
+    #         prices=[PRICE],
+    #         start_parameter="one-month-subscription",
+    #         payload="test-invoice-payload"
+    #     )
+    # except Exception as e:
+    #     logging.error(f"Error sending invoice: {e}")
+    #     await bot.send_message(message.chat.id, "Ошибка при создании платежа. Попробуйте позже.")
+    #
 
 # pre checkout (must be answered in 10 seconds)
 async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
@@ -72,10 +73,10 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 async def successful_payment(message: types.Message):
     try:
         user_id = int(message.from_user.id)
-        logging.info(f"SUCCESSFUL PAYMENT for user {user_id}")
+        # logging.info(f"SUCCESSFUL PAYMENT for user {user_id}")
         
         payment_info = message.successful_payment
-        logging.info(f"Payment details: {payment_info}")
+        # logging.info(f"Payment details: {payment_info}")
         
         success = update_user_payment_status(user_id)
         
