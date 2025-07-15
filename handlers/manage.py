@@ -661,7 +661,7 @@ async def link_update_channel_choose(message: types.Message, state: FSMLinkUpd):
 @dp.callback_query_handler(lambda c: c.data.startswith("link_ch_"), state=FSMLinkUpd.choose_channel)
 async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
     chat_id = int(cb.data.split("_")[-1])
-
+    message = cb.message
     # Only allow admins to call this
     member = await bot.get_chat_member(chat_id, message.from_user.id)
     if member.status not in ("administrator", "creator"):
