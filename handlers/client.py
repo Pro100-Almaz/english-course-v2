@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # поднимемся на одну папку вверх (из папка/ → центр/)
 ROOT_DIR = os.path.dirname(BASE_DIR)
 # дальше спускаемся в материалы
-file_path = os.path.join(ROOT_DIR, 'legal', 'dafinkers.pdf')
+file_path = os.path.join(ROOT_DIR, 'legal', 'oferta.pdf')
 
 # Handler for /start and /help
 async def start_bot(message: types.Message):
