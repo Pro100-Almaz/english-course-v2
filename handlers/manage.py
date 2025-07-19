@@ -24,6 +24,7 @@ class FSMchannel(StatesGroup):
     title         = State()
     description   = State()
     topic         = State()
+    admin         = State()
 
 
 class FSMmaterial(StatesGroup):
@@ -88,22 +89,10 @@ async def cancel_state(message: types.Message, state=FSMContext):
 # Начало загрузки данных о канале
 async def add_channel(message: types.Message):
     if str(message.from_user.id) not in ID_MASTER:
-        return await message.reply("🚫 Доступ запрещён.")
-
-    await FSMchannel.url.set()
-    await message.reply(
-        "Шаг 1/5: Отправьте URL канала (например https://t.me/my_channel или пригласительную ссылку)."
-    )
-
-
-async def load_channel_url(message: types.Message, state: FSMContext):
-    if str(message.from_user.id) not in ID_MASTER:
         return
-    async with state.proxy() as data:
-        data['url'] = message.text.strip()
-    await FSMchannel.next()
+    state = await FSMchannel.forward.set()
     await message.reply(
-        "Шаг 2/5: Перешлите любое сообщение из этого канала, чтобы бот узнал его numeric ID."
+        "Шаг 2/6: Перешлите любое сообщение из этого канала, чтобы бот узнал его numeric ID."
     )
 
 
@@ -121,30 +110,44 @@ async def load_channel_forward(message: types.Message, state: FSMContext):
 
     # -> move to title entry
     await FSMchannel.next()  # FSMchannel.title
-    await message.reply("Шаг 3/5: Введите название канала:")
+    await message.reply("Шаг 3/6: Введите название канала:")
 
 
 async def load_channel_title(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['title'] = message.text.strip()
     await FSMchannel.next()  # FSMchannel.description
-    await message.reply("Шаг 4/5: Введите описание канала:")
+    await message.reply("Шаг 4/6: Введите описание канала:")
 
 
 async def load_channel_description(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['description'] = message.text.strip()
     await FSMchannel.next()  # FSMchannel.topic
-    await message.reply("Шаг 5/5: Введите тему канала:")
+    await message.reply("Шаг 5/6: Введите тему канала:")
 
 
 async def load_channel_topic(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['topic'] = message.text.strip()
-        await sqlite_db.sql_add_commands_channels(state)
+    await FSMchannel.next() #FSMChannel.admin
+    await message.reply("Шаг 6/6: Добавьте бота как админа в канал и нажмите добавил", reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton(text="Бот добавлен в канал как админ", callback_data="added_admin")))
 
+@dp.callback_query_handler(lambda c: c.data == "added_admin", state = FSMchannel.admin)
+async def load_channel_db(cb: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    try:
+        bot_id = await bot.get_me()
+        member = await bot.get_chat_member(int(data['channel_id']), bot_id.id)
+        if member.status not in ['administrator', 'creator']:
+            return
+    except Exception as e:
+        await cb.message.answer(e)
+        return
+
+    await sqlite_db.sql_add_commands_channels(state)
     await state.finish()
-    await message.reply("✅ Информация о канале успешно добавлена.")
+    await cb.message.reply("✅ Информация о канале успешно добавлена.")
 
 
 """Запуск FSM для обновления информации о каналах
@@ -297,7 +300,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
         channel_id=rec['channel_id'],
         chapter_name=chapter['chapter_name'],
         message_id=sent.message_id,
-        name=message.caption.strip()
+        name=message.caption.strp()
     )#adds message_id to a videos table key is {chapter_name and chapter_video_id} pair is unique
                                     #returns an array of dictionaries of videos in a chapter_name from db contains: {video[id], video['message_id']}
 
@@ -710,7 +713,6 @@ def handlers_register_manage(dp: Dispatcher):
         ['отмена', 'stop']).lower(), state="*")
 
     dp.register_message_handler(add_channel, Text(equals='Добавить Канал', ignore_case=True), state=None)
-    dp.register_message_handler(load_channel_url, state=FSMchannel.url)
     dp.register_message_handler(load_channel_forward, content_types=types.ContentTypes.ANY, state=FSMchannel.forward)
     dp.register_message_handler(load_channel_title, state=FSMchannel.title)
     dp.register_message_handler(load_channel_description, state=FSMchannel.description)

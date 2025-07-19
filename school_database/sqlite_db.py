@@ -9,6 +9,7 @@ import sqlite3
 from aiogram import types
 from aiogram.types import user
 from aiogram.dispatcher import FSMContext
+from create_bot import bot
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'bot_sql.db')
@@ -160,9 +161,14 @@ async def sql_add_commands_channels(state: FSMContext):
     """Сохраняет новый канал в таблице courses на основе данных FSMContext"""
     data = await state.get_data()
     name = data.get('title')
-    url = data.get('url')
-    description = data.get('description')
     channel_id = data.get('channel_id')
+    link = await bot.create_chat_invite_link(
+        chat_id= channel_id,
+        expire_date=None,
+        member_limit=None
+    )
+    url = link.invite_link
+    description = data.get('description')
     with get_connection() as conn:
         conn.execute(
             "INSERT INTO courses (name, url, description, channel_id) VALUES (?, ?, ?, ?)",

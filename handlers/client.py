@@ -14,7 +14,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # поднимемся на одну папку вверх (из папка/ → центр/)
 ROOT_DIR = os.path.dirname(BASE_DIR)
 # дальше спускаемся в материалы
-file_path = os.path.join(ROOT_DIR, 'legal', 'oferta.pdf')
 
 # Handler for /start and /help
 async def start_bot(message: types.Message):
@@ -24,7 +23,7 @@ async def start_bot(message: types.Message):
     if not sqlite_db.get_user_payment_status(user_id):      #если пользователь уже является клиентом
         try:
             await bot.send_message(message.chat.id,
-                                   f'Привет! Я бот-помощник закрытого канала по английскому языку!\n'
+                                   f'Привет! Я бот-помощник телеграм канала по английскому языку Umbrella!\n'
                                    f'Ты сделал первый шаг к новым знаниям, развитию и позитивным переменам!\n\n'
                                    f'Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг',
                                    reply_markup=kb_start)
@@ -78,17 +77,41 @@ async def handle_payment(cb: types.CallbackQuery):
                              'Sandugash - @Sakokas',
                              reply_markup=kb_start)
     if param == 'oferta':
-        if not os.path.exists(file_path):
-            await message.answer("Мы не можем найти оферту")
-            return
+        await oferta_handler(message)
+    if param == 'conf':
+        await privacy_handler(message)
 
-        document = InputFile(file_path)
-        await bot.send_document(
-            chat_id=message.chat.id,
-            document=document,
-            caption= "Публичная Оферта"
-        )
-        await message.answer("Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг", reply_markup=kb_start)
+async def privacy_handler(message: types.Message):
+    file_path = os.path.join(ROOT_DIR, 'legal', 'privacy.pdf')
+
+    if not os.path.exists(file_path):
+        await message.answer("Мы не можем найти политику конфиденциальности")
+        return
+
+    document = InputFile(file_path)
+    await bot.send_document(
+        chat_id=message.chat.id,
+        document=document,
+        caption="Политка конфиденциальности"
+    )
+    await message.answer(
+        "Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг",
+        reply_markup=kb_start)
+
+
+async def oferta_handler(message: types.Message):
+    file_path = os.path.join(ROOT_DIR, 'legal', 'oferta.pdf')
+    if not os.path.exists(file_path):
+        await message.answer("Мы не можем найти оферту")
+        return
+
+    document = InputFile(file_path)
+    await bot.send_document(
+        chat_id=message.chat.id,
+        document=document,
+        caption= "Публичная Оферта"
+    )
+    await message.answer("Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг", reply_markup=kb_start)
 
 
 async def get_main_channel(message: types.Message):
@@ -210,4 +233,6 @@ def handlers_register(dp: Dispatcher):
     dp.register_message_handler(get_work_hours, Text(equals='Режим работы', ignore_case=True))
     dp.register_message_handler(get_support, Text(equals='Служба поддержки', ignore_case=True))
     dp.register_message_handler(cancel_sub, Text(equals='Отменить подписку', ignore_case=True))
+    dp.register_message_handler(oferta_handler, Text(equals='Оферта', ignore_case=True))
+    dp.register_message_handler(privacy_handler, Text(equals='Политика конфенциальности', ignore_case=True))
     dp.register_message_handler(random_message)
