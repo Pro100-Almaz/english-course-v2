@@ -695,6 +695,34 @@ async def cmd_new_invite(cb: types.CallbackQuery, state: FSMLinkUpd):
     await message.reply(text = f"✅ Here’s your new invite link: \n link updated", reply_markup=kb)
     await state.finish()
 
+async def update_main_nav(message: types.Message):
+    channels = sqlite_db.load_courses_url()
+    channel = {}
+    kb = InlineKeyboardMarkup(row_width=1)
+
+    for channel_name, channel_id in channels.items():
+        temp = sqlite_db.get_channel_by_id(channel_id)
+        if 'Main' in channel_name:
+            channel = temp
+        else:
+            kb.add(InlineKeyboardButton(text=channel_name, url = temp['url']))
+    chat = await bot.get_chat(channel['channel_id'])
+    pinned = chat.pinned_message
+    if not pinned:
+        await message.answer('Отсутсвует навигационное письмо попробуйте после его добавления')
+
+    else:
+        await bot.edit_message_reply_markup(  # edit navigation message to add chapter buttons
+            chat_id=channel['channel_id'],
+            message_id=channel['nav_message_id'],
+            reply_markup=kb
+        )
+
+
+
+    return
+
+
 # —————— Runner ——————
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
@@ -736,7 +764,7 @@ def handlers_register_manage(dp: Dispatcher):
         state=FSMChannelUpdate.input_value)
     
     # FSM для материалов
-    dp.register_message_handler(add_material, Text(equals='Добавить Материал', ignore_case=True), state=None)
+    # dp.register_message_handler(add_material, Text(equals='Добавить Материал', ignore_case=True), state=None)
     dp.register_message_handler(load_material_title, state=FSMmaterial.title)
     dp.register_message_handler(load_content_type, state=FSMmaterial.content_type)
     dp.register_message_handler(load_content, content_types=['text', 'photo', 'document', 'video', 'audio'], state=FSMmaterial.content)
@@ -752,3 +780,4 @@ def handlers_register_manage(dp: Dispatcher):
     dp.register_message_handler(view_channels, Text(equals='Просмотр Каналов', ignore_case=True))
     dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
     dp.register_message_handler(link_update_channel_choose, Text(equals='Обновить ссылку', ignore_case=True))
+    dp.register_message_handler(update_main_nav, Text(equals='Обновить ссылки в глав. канале', ignore_case=True))
