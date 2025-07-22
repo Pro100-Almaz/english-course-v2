@@ -260,7 +260,7 @@ async def process_send_video(message: types.Message, state: FSMContext):
     chapter_id = data['chapter']
     rec = sqlite_db.get_channel_by_id(int(data['channel_id']))
     print(chapter_id)
-    if chapter_id == "unknown":
+    if chapter_id == "unknown":# если мы отправляем единичное видео без чаптера
         try:
             sent = await bot.send_video(
                 chat_id=rec['channel_id'],
@@ -316,11 +316,21 @@ async def process_send_video(message: types.Message, state: FSMContext):
         kb.add(InlineKeyboardButton(text=video_name, url=url))
     print(kb)
     try:
-        await bot.edit_message_reply_markup(
+        await bot.delete_message(
             chat_id=rec['channel_id'],
-            message_id=int(chapter['chapter_message_id']),
+            message_id=int(chapter('chapter_message_id'))
+        )
+    except Exception as e:
+        await message.answer(f"Не получилось удалить навигацию главы\n причина:\n{e}")
+
+    try:
+        sent = await bot.send_message(
+            chat_id=rec['channel_id'],
+            text=chapter['chapter_name'].strip(),
+            parse_mode=types.ParseMode.HTML,
             reply_markup=kb
         )
+        sqlite_db.update_chapter_field(field='chapter_message_id', value=sent.message_id, chapter_name=chapter['chapter_name'])
         await message.answer("Ваше видео было добавлено в навигацию")
     except Exception as e:
         await message.answer(f"Не получилось обновить навигацию главы.\n Причина:\n{e}")
@@ -717,6 +727,7 @@ async def update_main_nav(message: types.Message):
             message_id=channel['nav_message_id'],
             reply_markup=kb
         )
+        message.answer("Ссылки на навигационном письме были обновлены")
 
 
 

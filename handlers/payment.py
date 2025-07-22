@@ -3,7 +3,7 @@ import sqlite3
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types.message import ContentType
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from create_bot import dp, bot, client_commands
@@ -16,6 +16,8 @@ logging.basicConfig(
 # Get provider token from environment variable
 PROVIDER_TOKEN = os.getenv("PROVIDER_TOKEN")  # from BotFather
 CURRENCY       = "KZT"                        # or "USD", "EUR", etc.
+PUBLIC_TERMINAL_ID = os.getenv("PUBLIC_TERMINAL_ID")
+
 
 # For testing, you can set a test token
 if not PROVIDER_TOKEN:
@@ -33,6 +35,22 @@ async def cancel_handler(user_id: int):
 
 # 1) /buy command: send the invoice
 async def payment_handler(message: types.Message, user_id):
+    # # Собираем URL виджета TipTop Pay с параметрами
+    # payment_url = (
+    #         "https://widget.tiptoppay.kz/?" +
+    #         f"publicTerminalId={PUBLIC_TERMINAL_ID}"
+    #         f"&description=Оплата+курса"
+    #         f"&amount=5000"
+    #         f"&currency=KZT"
+    #         f"&externalId={message.from_user.id}"
+    # )
+    #
+    # # Создаём кнопку Web App, Telegram откроет её в WebView
+    # kb = InlineKeyboardMarkup().add(
+    #     InlineKeyboardButton("Оплатить курс", web_app=WebAppInfo(url=payment_url))
+    # )
+    # await message.answer("Нажмите кнопку ниже, чтобы открыть оплату в мини-приложении:", reply_markup=kb)
+
     await successful_payment(message, int(user_id))
     # if not PROVIDER_TOKEN:
     #     await bot.send_message(message.chat.id, "Ошибка: токен платежной системы не настроен. Обратитесь к администратору.")
