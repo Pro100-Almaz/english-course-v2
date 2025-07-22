@@ -717,6 +717,7 @@ async def update_main_nav(message: types.Message):
             message_id=channel['nav_message_id'],
             reply_markup=kb
         )
+        await message.answer('Навигация была успешно обновлена')
 
 
 
