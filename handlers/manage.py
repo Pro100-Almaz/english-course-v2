@@ -431,7 +431,8 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
     for chapter_name, chapter_message_id in chapters.items():
         url = f"https://t.me/c/{rec['channel_id'][4:]}/{chapter_message_id}"
         kb.add(InlineKeyboardButton(text=chapter_name, url=url))
-
+    print(f"this is a pinned message\n{pinned}")
+    print(f"this is a pinned message id: \n{pinned.message_id}")
     try:
         await bot.edit_message_reply_markup( # edit navigation message to add chapter buttons
             chat_id=ch_id,
