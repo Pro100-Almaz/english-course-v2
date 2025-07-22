@@ -399,7 +399,7 @@ async def process_update_input(message: types.Message, state: FSMContext):
                 sqlite_db.update_channel_field(ch_id, 'nav_message_id', pinned.message_id,)
                 await message.reply("✅ Текст закреплённого сообщения обновлён!")
             except Exception as e:
-                await bot.send_message("The message you have sent is exactly the same as the pinned message.")
+                await message.reply("The message you have sent is exactly the same as the pinned message.")
 
 
     await state.finish()
