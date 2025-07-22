@@ -368,9 +368,3 @@ def update_user_payment_status(user_id: int, value: bool):
             conn.commit()
             return result
         else: return False
-
-def update_chapter_field(field: str, value, chapter_name: str):
-    with get_connection() as conn:
-        cur = conn.execute("UPDATE chapers SET {field} = ? WHERE chapter_name = ?",
-                           (value, chapter_name))
-        conn.commit()
