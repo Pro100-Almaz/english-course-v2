@@ -411,7 +411,7 @@ async def process_chapter_name(message: types.Message, state: FSMContext):
     ch_id = data['channel_id']
     rec = sqlite_db.get_channel_by_id(ch_id) #get channel info from database
     chapter_name = data['chapter_name']
-    chat = await bot.get_chat(rec['channel_id'])
+    chat = await bot.get_chat(int(ch_id))
     pinned = chat.pinned_message# info on the channel navigation message
     kb = InlineKeyboardMarkup(row_width=2)
 
