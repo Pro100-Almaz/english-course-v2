@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://widget.tiptoppay.kz/bundles/widget.js"></script>
+          <title>TipTopPay</title>
+        </head>
+        <body>
+          <button id="payButton">Pay</button>
+          <script>
+
+            const widget = new tiptop.Widget();
+            document.getElementById('payButton').addEventListener('click', () => {
+              const intentParams = {
+                  // publicTerminalId: "{{PUBLIC_TERMINAL_ID}}",
+                  // description: 'English course',
+                  // paymentSchema: 'Single',
+                  // currency: 'KZT',
+                  // amount: 1001,
+                  // externalId: 'your_system_payment_identifier',
+                  // restrictedPaymentMethods: ['ApplePay', 'GooglePay'],
+                  // paymentMethodSequence: ['Card'],
+                  // tokenize: true,
+                  // recurrent: {
+                  //     period: 1, // частота списания
+                  //     interval: 'Month', // интервал списания
+                  //     amount: 8000, // сумма
+                  //     startDate: "2030-04-15T00:00:00.0000000Z", // дата начала
+                  //     receipt: { // чек для рекуррент
+                  //         items: [ //товарные позиции
+                  //           {
+                  //               label: 'Umbrella academy english course', //наименование товара
+                  //               price: 8000.00, //цена
+                  //               quantity: .00, //количество
+                  //               amount: 8000.00, //сумма
+                  //           }
+                  //         ],
+                  //         isBso: false, //чек является бланком строгой отчетности
+                  //         amounts: {
+                  //             electronic: 8000.00, // Сумма оплаты электронными деньгами
+                  //             cash: 0.00 // Сумма оплаты наличными деньгами (2 знака после запятой)
+                  //         },
+                  //     }
+                  // }
+                    publicTerminalId: "{{PUBLIC_TERMINAL_ID}}", // идентификатор терминала
+                    description: "Basket of oranges", // описание списания
+                    paymentSchema: 'Dual', // схема
+                    currency: "KZT", // валюта
+                    amount: 1001, // сумма
+                    externalId: "your_system_payment_identifier", // идентификатор платежа в вашей системе
+                    restrictedPaymentMethods: [ // список отключенных для данной оплаты методов
+                        'ApplePay'
+                    ],
+                    paymentOptions: [{
+                        type: 'InstallmentKz',
+                        items: [{
+                                    name: 'Basket',
+                                    brand: 'Dior',
+                                    category: 'Common',
+                                    count: 1,
+                                    price: 100, // для InstallmentKz допустимы только целые числа, значение 100.50 будет воспринято провайдером как некорректное
+                                    sku: 'SomeSKU',
+                                },
+                                {
+                                    name: 'Oranges',
+                                    brand: 'Fanta',
+                                    category: 'Fruits',
+                                    count: 9,
+                                    price: 100,
+                                    sku: 'SomeSKU6',
+                                }
+                        ]
+                    }],
+                    paymentMethodSequence: [ // очередность отображения методов оплаты
+                        'Card',
+                        'GooglePay',
+                        'InstallmentKz'
+                    ],
+                    userInfo: {
+                        accountId: "your_system_user_id",
+                        firstName: "Test",
+                        lastName: "Test",
+                        middleName: "Test",
+                        fullName: "Test Test Test",
+                        birth: "2000-30-03",
+                        address: "д. 90",
+                        street: "ул. Шевченко",
+                        city: "г. Алматы",
+                        country: "Казахстан",
+                        phone: "+71234567890",
+                        postCode: "119518",
+                        email: "user@email.com",
+                        customField: {
+                          name: "your_field_name",
+                          value: "your_field_value"
+                        }
+                    },
+                    recurrent: {
+                        period: 1, // частота списания
+                        interval: 'Day', // интервал списания
+                        amount: 500, // сумма
+                        startDate: "2030-04-15T00:00:00.0000000Z", // дата начала
+                        maxPeriods: 50, // количество списаний после которых рекуррент будет остановлен
+                        receipt: { // чек для рекуррента
+                            items: [{ //товарные позиции
+                                label: 'Наименование товара 3', //наименование товара
+                                price: 300.00, //цена
+                                quantity: 3.00, //количество
+                                amount: 900.00, //сумма
+                            }],
+                            isBso: false, //чек является бланком строгой отчетности
+                            amounts: {
+                                electronic: 1300.00, // Сумма оплаты электронными деньгами
+                                cash: 0.00 // Сумма оплаты наличными деньгами (2 знака после запятой)
+                            },
+                        }
+                    },
+                    items: [{
+                                id: "your_system_item_unique_identifier_1", // уникальный идентификатор товара в вашей системе (или для данной оплаты)
+                                name: "Basket", // наименование товара
+                                count: 1, // количество
+                                price: 100, // стоимость
+                                // label?: string | null;
+                                // quantity?: number | null;
+                            },
+                            {
+                                id: "your_system_item_unique_identifier_2",
+                                name: "Orange",
+                                count: 9,
+                                price: 100,
+                            }
+                    ],
+                    receipt: {
+                        items: [ //товарные позиции
+                            {
+                                label: "Наименование товара 1", //наименование товара
+                                price: 100.00, //цена
+                                quantity: 1.00, //количество
+                                amount: 100.00, //сумма
+                                vat: 0, //ставка НДС
+                                measurementUnit: "шт" //единица измерения
+                            },
+                            {
+                                label: "Наименование товара 2", //наименование товара
+                                price: 200.00, //цена
+                                quantity: 2.00, //количество
+                                amount: 300.00, //сумма со скидкой 25%
+                                vat: 10, //ставка НДС
+                                measurementUnit: "шт", //единица измерения
+                            },
+                            {
+                                label: "Наименование товара 3", //наименование товара
+                                price: 300.00, //цена
+                                quantity: 3.00, //количество
+                                amount: 900.00, //сумма
+                                vat: 20, //ставка НДС
+                                measurementUnit: "шт", //единица измерения
+                            }
+                        ],
+                        calculationPlace: "www.my.ru", //место осуществления расчёта, по умолчанию берется значение из кассы
+                        taxationSystem: 0, //система налогообложения; необязательный, если у вас одна система налогообложения
+                        email: "user@example.com", //e-mail покупателя, если нужно отправить письмо с чеком
+                        phone: "", //телефон покупателя в любом формате, если нужно отправить сообщение со ссылкой на чек
+                        customerInfo: "", // Покупатель - наименование организации или фамилия, имя, отчество (при наличии), серия и номер паспорта покупателя (клиента)
+                        customerInn: "7708806063", // ИИН покупателя
+                        isBso: false, //чек является бланком строгой отчётности
+                        AgentSign: null, //признак агента
+                        amounts: {
+                            electronic: 1300.00, // Сумма оплаты электронными деньгами
+                            cash: 0.00 // Сумма оплаты наличными деньгами (2 знака после запятой)
+                        }
+                    },
+                    metadata: {
+                        referrerId: "some_referrer_123"
+                    },
+                    successRedirectUrl: "<https://example.com>",
+                    failRedirectUrl: "<https://failexample.com>",
+                    retryPayment: false,
+                    receiptEmail: "user@example.com",
+                    tokenize: true,
+                    emailBehavior: "Required",
+              };
+              widget.start(intentParams)
+                .then(res => window.Telegram.WebApp.sendData(JSON.stringify(res)))
+                .catch(err => console.error(err));
+            });
+          </script>
+        </body>
+        </html>
