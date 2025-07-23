@@ -4,7 +4,6 @@ from create_bot import dp
 from handlers import client, manage, common, payment
 from school_database import sqlite_db
 from aiogram import types
-from pyngrok import ngrok
 
 async def on_startup(_):
     print('🚀 Бот запущен и подключен к Telegram')
