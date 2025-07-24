@@ -368,3 +368,16 @@ def update_user_payment_status(user_id: int, value: bool):
             conn.commit()
             return result
         else: return False
+
+def update_user_payment_status_tag(user_tag: str, value: bool):
+    with get_connection() as conn:
+        cur = conn.execute("SELECT user_id FROM users WHERE username = ?", (user_tag,))
+        row = cur.fetchone()
+        if not row:
+            return -1
+        user_id = row[0]
+        print(f"user was found{user}")
+        conn.execute("UPDATE users SET payment_status = ? WHERE username = ?",(value, user_tag))
+        conn.commit()
+        return user_id
+

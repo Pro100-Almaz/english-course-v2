@@ -7,7 +7,7 @@ from magic_filter import F
 
 from create_bot import dp, bot, master_id
 from school_database import sqlite_db
-from keyboards import kb_manage
+from keyboards import kb_manage, kb_client
 
 """Администрирование Бота через FSM
 Внесение изменений в базу через интерфейс Telegram
@@ -16,6 +16,9 @@ from keyboards import kb_manage
 """
 
 ID_MASTER = master_id
+
+class FSMUserUpdate(StatesGroup):
+    user_id = State()
 
 
 class FSMchannel(StatesGroup):
@@ -719,10 +722,63 @@ async def update_main_nav(message: types.Message):
             reply_markup=kb
         )
         await message.answer('Навигация была успешно обновлена')
-
-
-
     return
+
+
+async def update_user_info(message: types.Message):
+    user = message.from_user
+    if str(user.id) not in ID_MASTER:
+        print(ID_MASTER)
+        print(user.id)
+        print("not U")
+        return
+    await message.answer(text= "write down the user tag")
+    await FSMUserUpdate.user_id.set()
+
+@dp.message_handler(state=FSMUserUpdate.user_id)
+async def update_user_user_id(message: types.Message, state: FSMContext):
+    print("upd brgun")
+    user_name = message.text.strip()
+    user_id = -1
+    try:
+        user_id = sqlite_db.update_user_payment_status_tag(user_name, True)
+        await message.answer(text= "user payment status updated")
+    except Exception as e:
+        await message.answer(e)
+        await state.finish()
+        return
+    if user_id == -1:
+        print("user_id was not found")
+        await state.finish()
+        return
+
+    else:
+        try:
+            print(user_id)
+            sent = await bot.send_message(  # send chapter navifation message and save the message
+                chat_id=user_id,
+                text=f'✅ Ваш платёж успешно подтверждён!\n\n'
+                    f'🎉 Доступ открыт — добро пожаловать в наше сообщество!\n'
+                    f'Теперь вам доступны:\n'
+                    f'📌 Ежемесячные видеокурсы\n'
+                    f'Ссылка на видеоуроки \n'
+                    f'💡 Ежедневные задания, советы и фишки\n'
+                    f'Ссылка на главный канал\n'
+                    f'🎙 Живые эфиры каждую неделю\n'
+                    f'Ссылка на канал где будут записи с зум\n'
+                    f'🤝 Поддержка кураторов и участие в челленджах\n'
+                    f'Ссылка на техподдержку \n'
+                    f'👉 Не теряйте времени — начните обучение прямо сейчас!\n'
+                    f'Если появятся вопросы — пишите, мы всегда на связи.\n\n'
+                    f'🔥 Удачи и отличного старта!',
+                reply_markup=kb_client,
+                parse_mode=types.ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            await message.answer(e)
+
+        await state.finish()
 
 
 # —————— Runner ——————
@@ -736,6 +792,7 @@ if __name__ == "__main__":
 
 def handlers_register_manage(dp: Dispatcher):
     # FSM для каналов
+    dp.register_message_handler(update_user_info, Text(equals='Обновить информацию про пользователя', ignore_case=True))
     dp.register_message_handler(verify_owner, commands=['moderate'])
     dp.register_message_handler(
         cancel_state, Text(equals='Отмена Загрузки'), state="*")

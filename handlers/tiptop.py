@@ -4,7 +4,11 @@ import traceback
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher import FSMContext
 from aiogram.utils import executor
+
+from keyboards.client_kb import kb_start
 from create_bot import dp, bot
 from pathlib import Path
 import json
@@ -13,46 +17,9 @@ PUBLIC_TERMINAL_ID = os.getenv("PUBLIC_TERMINAL_ID")
 template_path = Path(__file__).parent.parent / 'templates' / 'pay.html'
 PUBLIC_URL = os.getenv('PUBLIC_URL')
 
-@dp.message_handler(lambda msg: msg.web_app_data is not None)
-async def webapp_payment_handler(msg: types.Message):
-    """
-    This will fire when your Web App calls sendData(...)
-    """
-    raw = msg.web_app_data.data                    # the JSON string you sent
-    try:
-        result = json.loads(raw)                   # decode to a dict
-    except json.JSONDecodeError:
-        await msg.reply("❌ Could not decode payment result.")
-        return
 
-    # 👉 Inspect result to see what fields you get
-    # You can print it or log it:
-
-    print("💳 Payment widget returned:", result)
-
-    # For example, WidgetResult might contain:
-    #   result.success (bool)
-    #   result.paymentId
-    #   result.externalId
-    #   result.amount
-    #   result.currency
-    #   result.cardMask
-    #   result.errorCode / errorMessage
-    #
-    # Adjust these to match the real shape you see in your console.
-
-    if result.get("success"):
-        # 1) Acknowledge to the user
-        await msg.reply(f"✅ Payment succeeded!\nOrder ID: {result.get('externalId')}\nAmount: {result.get('amount')}{result.get('currency')}")
-        # 2) TODO: save to your database, e.g.:
-        #    db.payments.insert_one({
-        #      "user_id": msg.from_user.id,
-        #      "payment_id": result["paymentId"],
-        #      "external_id": result["externalId"],
-        #      "amount": result["amount"], …
-        #    })
-    else:
-        await msg.reply(f"❌ Payment failed: {result.get('errorMessage', 'Unknown error')}")
+class FSMPaymentConfirm(StatesGroup):
+    waitgin_for_check = State()
 
 async def start_tiptop(message: types.Message):
     keyboard = InlineKeyboardMarkup(
@@ -63,7 +30,21 @@ async def start_tiptop(message: types.Message):
             )
         ]]
     )
+    await FSMPaymentConfirm.waitgin_for_check.set()
     await message.answer('Нажмите кнопку для оплаты:', reply_markup=keyboard)
+    print("<UNK> <UNK> <UNK> <UNK> <UNK> <UNK> <UNK> <UNK> <UNK>")
+
+@dp.message_handler(content_types=types.ContentType.PHOTO, state=FSMPaymentConfirm.waitgin_for_check)
+async def process_payment(message: types.Message, state: FSMContext):
+    print('process paymeny')
+    await message.answer(text="Спасибо за оплату!\n"
+                              "Ваша заявка успешно принята. Ссылка на закрытый Telegram-канал будет отправлена вам после того, как наш менеджер обработает ваши данные.\n"
+                            "Пожалуйста, ожидайте — это может занять немного времени.\n"
+                            "Если у вас возникнут вопросы, напишите нам — мы всегда на связи!\n"
+                            "Спасибо, что учите английский вместе с нами! 💙✨", reply_markup=kb_start)
+    await state.finish()
+
+
 
 # aiohttp handler for the payment page
 def create_app():
