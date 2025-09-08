@@ -208,8 +208,8 @@ async def cancel_sub(message: types.Message):
     result = await cancel_handler(message.chat.id)
     if result:
         await message.answer(text="Ваша подписка была успешно отменена", reply_markup=kb_start)
-        await message.send(
-            chat_id=266058709,
+        await bot.send_message(
+            chat_id=sqlite_db.get_manager(),
             text = f"user {message.from_user.username} canceled"
         )
     else:

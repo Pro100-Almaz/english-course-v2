@@ -87,6 +87,13 @@ def bot_tables_sql():
             )
             """
         )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS manager (
+                id INTEGER NOT NULL
+            )
+            """
+        )
 
 
         cur = conn.execute("SELECT COUNT(*) AS cnt FROM courses")
@@ -381,3 +388,20 @@ def update_user_payment_status_tag(user_tag: str, value: bool):
         conn.commit()
         return user_id
 
+def update_manager(user_id: int):
+    with get_connection() as conn:
+        try:
+            conn.execute("DELETE FROM manager")
+            conn.execute("INSERT INTO manager (id) VALUES (?)", (user_id,))
+            conn.commit()
+        except Exception as e:
+            print(e)
+
+def get_manager():
+    with get_connection() as conn:
+        cur = conn.execute("SELECT id FROM manager ORDER BY id ASC LIMIT 1")
+        row = cur.fetchone()
+        # if your connection uses sqlite3.Row row_factory:
+        return row["id"] if row else None
+        # otherwise (no row_factory), use:
+        # return row[0] if row else None

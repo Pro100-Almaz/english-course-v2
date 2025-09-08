@@ -17,6 +17,9 @@ from keyboards import kb_manage, kb_client
 
 ID_MASTER = master_id
 
+class FSMManagerUpdate(StatesGroup):
+    new_id_awaiting = State()
+
 class FSMUserUpdate(StatesGroup):
     user_id = State()
 
@@ -724,16 +727,42 @@ async def update_main_nav(message: types.Message):
         await message.answer('Навигация была успешно обновлена')
     return
 
+async def update_manager(message: types.Message):
+    if str(message.from_user.id) not in ID_MASTER:
+        print(ID_MASTER)
+        print(message.from_user.id)
+    await message.answer(text="Сначало напишите боту из аккаунта менеджера боту любое сообщение,\n После того как начнется час с ботом в данном чате напишите ID нового менеджера")
+    await FSMManagerUpdate.new_id_awaiting.set()
+
+async def is_user_reachable(user_id: int):
+    try:
+        await bot.send_chat_action(user_id, "typing")
+        return True, "ok"
+    except Exception as e:
+        return False, "not_found"
+
+@dp.message_handler(state=FSMManagerUpdate.new_id_awaiting)
+async def manager_id_recieved(message: types.Message, state: FSMManagerUpdate.new_id_awaiting):
+    user_id = message.text.strip()
+    if await is_user_reachable(int(user_id)):
+        await message.answer(text="Аккаунт менеджера найден")
+        await state.finish()
+        sqlite_db.update_manager(int(user_id))
+        return
+    else:
+        await message.answer(text="Аккаунт не найден или не доступен.\n Убедитесь что ID верен и у менеджера начат чат с ботом")
+
+
 
 async def update_user_info(message: types.Message):
     user = message.from_user
     if str(user.id) not in ID_MASTER:
         print(ID_MASTER)
         print(user.id)
-        print("not U")
         return
     await message.answer(text= "write down the user tag")
     await FSMUserUpdate.user_id.set()
+
 
 @dp.message_handler(state=FSMUserUpdate.user_id)
 async def update_user_user_id(message: types.Message, state: FSMContext):
@@ -779,7 +808,6 @@ async def update_user_user_id(message: types.Message, state: FSMContext):
             await message.answer(e)
 
         await state.finish()
-
 
 # —————— Runner ——————
 if __name__ == "__main__":
@@ -840,3 +868,4 @@ def handlers_register_manage(dp: Dispatcher):
     dp.register_message_handler(test_message, Text(equals='test', ignore_case=True))
     dp.register_message_handler(link_update_channel_choose, Text(equals='Обновить ссылку', ignore_case=True))
     dp.register_message_handler(update_main_nav, Text(equals='Обновить ссылки в глав. канале', ignore_case=True))
+    dp.register_message_handler(update_manager, Text(equals='Обновить менеджера', ignore_case=True))
