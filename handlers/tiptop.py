@@ -7,12 +7,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 from aiogram.utils import executor
-from aiohttp.web_fileresponse import content_type
 
 from keyboards.client_kb import kb_start
 from create_bot import dp
 from pathlib import Path
-from client import start_bot
 
 PUBLIC_TERMINAL_ID = os.getenv("PUBLIC_TERMINAL_ID")
 template_path = Path(__file__).parent.parent / 'templates' / 'pay.html'
@@ -45,13 +43,16 @@ async def process_payment(message: types.Message, state: FSMContext):
                             "Спасибо, что учите английский вместе с нами! 💙✨", reply_markup=kb_start)
     await state.finish()
 
-@dp.message_handler(content_type != types.ContentType.PHOTO, state=FSMPaymentConfirm.waitgin_for_check)
+
+
+@dp.message_handler(state=FSMPaymentConfirm.waitgin_for_check)
 async def confirmation_request(message: types.Message, state: FSMContext):
-    if message.content_type == types.ContentType.TEXT:
-        if message.text.strip() == '/start':
-            await state.finish()
-            await start_bot(message)
-    await message.answer(text="Прошу отправьте фото чека для подтверждения оплаты или напишите команду '/start'\n")
+    if 'stop' in message.text.strip().lower().split(' '):
+        await state.finish()
+        await message.answer(text='Тут можно оформить подписку для вступления в наш клуб и отменить ее. Жми нужную кнопку и будет доступен следующий шаг',
+                             reply_markup=kb_start)
+        return
+    await message.answer(text="Прошу отправьте фото чека для подтверждения оплаты или напишите 'stop'\n")
 
 # aiohttp handler for the payment page
 def create_app():

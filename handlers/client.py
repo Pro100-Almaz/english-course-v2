@@ -39,7 +39,7 @@ async def start_bot(message: types.Message):
                                reply_markup=kb_client)
         await message.delete()
     except Exception as e:
-        await message.reply(f'Пожалуйста напишите боту в ЛС2: {bot_address}\n\nОшибка: {str(e)}')
+        await message.reply(f'Пожалуйста напишите боту в ЛС: {bot_address}\n\nОшибка: {str(e)}')
 
 @dp.callback_query_handler(lambda c: c.data.startswith('client_start_'))
 async def handle_payment(cb: types.CallbackQuery):
